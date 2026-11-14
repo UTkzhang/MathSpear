@@ -160,13 +160,7 @@ export class GameScene extends Phaser.Scene {
     const cursors = kb.createCursorKeys();
     const wasd = kb.addKeys('W,A,S,D') as Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
     this.keys = { up: cursors.up, down: cursors.down, left: cursors.left, right: cursors.right, ...wasd };
-    onKey(this, 'ESC', () => {
-      if (this.mode === 'play') {
-        if (!this.ended) this.recordLevel();
-        saveRun(this.run, 'quit');
-      }
-      this.scene.start('Menu');
-    });
+    onKey(this, 'ESC', () => this.exit());
 
     this.levelStartedAt = this.now();
     if (this.mode === 'tutorial') {
@@ -272,6 +266,15 @@ export class GameScene extends Phaser.Scene {
     this.showBanner(cleared, `${tally}  ·  Shop in ${levelsText(left)}`);
     const data: GameData = { mode: 'play', run: this.run };
     this.time.delayedCall(GAME.clearedBannerMs, () => this.scene.restart(data));
+  }
+
+  /** Back to the menu. A run in progress is saved to the event log as quit. */
+  private exit(): void {
+    if (this.mode === 'play') {
+      if (!this.ended) this.recordLevel();
+      saveRun(this.run, 'quit');
+    }
+    this.scene.start('Menu');
   }
 
   /** "All 5 right!" or "4 right, 2 wrong", for the level just played. */
@@ -505,7 +508,13 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- HUD and drawing
 
   private createHud(): void {
-    makeText(this, 24, HUD_HEIGHT / 2 + 4, 'Esc to exit', { fontSize: '13px', color: COLORS.textDim }).setOrigin(0, 0.5);
+    // Esc, or a click or tap on the label itself (touch screens have no Esc key).
+    const exit = makeText(this, 24, HUD_HEIGHT / 2 + 4, 'Esc to exit', { fontSize: '13px', color: COLORS.textDim })
+      .setOrigin(0, 0.5)
+      .setInteractive({ useHandCursor: true });
+    exit.on('pointerover', () => exit.setColor(COLORS.text));
+    exit.on('pointerout', () => exit.setColor(COLORS.textDim));
+    exit.on('pointerup', () => this.exit());
     this.hudHearts = makeText(this, 108, HUD_HEIGHT / 2 + 4, '', { fontSize: '24px', color: COLORS.bad }).setOrigin(0, 0.5);
     this.hudTarget = makeText(this, WIDTH / 2, HUD_HEIGHT / 2 + 4, '', { fontSize: '28px', fontStyle: 'bold' });
     this.hudGold = makeText(this, WIDTH - 24, HUD_HEIGHT / 2 - 6, '', { fontSize: '20px', color: COLORS.gold }).setOrigin(1, 0.5);

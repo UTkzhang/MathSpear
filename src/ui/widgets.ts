@@ -77,3 +77,69 @@ export function makeButton(
 export function onKey(scene: Phaser.Scene, key: string, action: () => void): void {
   scene.input.keyboard?.on(`keydown-${key}`, action);
 }
+
+/**
+ * A small "!" icon with a tooltip, for extra explanations that would clutter
+ * the screen as plain text. The tooltip shows while the mouse is over the icon,
+ * and a click or tap pins it open until the next click or tap (so it works on
+ * touch screens, which have no hover). It opens above the icon (or below with
+ * `below`), kept inside the screen.
+ */
+export function makeInfoIcon(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  tip: string,
+  opts: { maxWidth?: number; below?: boolean } = {},
+): Phaser.GameObjects.Container {
+  const r = 11;
+  const ring = scene.add.graphics();
+  const mark = makeText(scene, 0, 0, '!', { fontSize: '15px', fontStyle: 'bold', color: COLORS.textDim });
+  const draw = (hover: boolean) => {
+    ring.clear();
+    ring.fillStyle(hover ? 0x324060 : 0x263045, 1);
+    ring.fillCircle(0, 0, r);
+    ring.lineStyle(2, hover ? 0xe8ecf4 : 0x8b93a7, 1);
+    ring.strokeCircle(0, 0, r);
+    mark.setColor(hover ? COLORS.text : COLORS.textDim);
+  };
+  draw(false);
+
+  const icon = scene.add.container(x, y, [ring, mark]);
+  icon.setSize(r * 2 + 8, r * 2 + 8);
+  icon.setInteractive({ cursor: 'help' });
+
+  const box = makeText(scene, x, opts.below ? y + r + 8 : y - r - 8, tip, {
+    fontSize: '14px',
+    backgroundColor: '#263045',
+    padding: { x: 12, y: 8 },
+    wordWrap: { width: opts.maxWidth ?? 360 },
+    lineSpacing: 3,
+  })
+    .setOrigin(0.5, opts.below ? 0 : 1)
+    .setDepth(1000)
+    .setVisible(false);
+  const half = box.width / 2;
+  box.x = Math.min(WIDTH - half - 8, Math.max(half + 8, x));
+
+  let hover = false;
+  let pinned = false;
+  const update = () => {
+    draw(hover || pinned);
+    box.setVisible(hover || pinned);
+  };
+  icon.on('pointerover', () => {
+    hover = true;
+    update();
+  });
+  icon.on('pointerout', () => {
+    hover = false;
+    update();
+  });
+  // A press on the icon pins or unpins it; a press anywhere else closes it.
+  scene.input.on('pointerdown', (_: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+    pinned = over.includes(icon) ? !pinned : false;
+    update();
+  });
+  return icon;
+}
