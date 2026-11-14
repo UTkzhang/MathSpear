@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECK, MIXED_STAGE, PRESETS, STAGES, type Stage } from '../src/config';
+import { MIXED_STAGE, PRESETS, RECOMMEND, STAGES, type Stage } from '../src/config';
 import { newRun, levelSpec } from '../src/game/run';
 import { generateWave, tierOfSkill } from '../src/learning/problems';
 import { createRng } from '../src/learning/rng';
@@ -53,9 +53,9 @@ describe('PRESETS', () => {
     for (const p of PRESETS) expect(levelSpec(newRun(1, p.key), 1)).toMatchObject({ name: STAGES[p.startStage].name });
   });
 
-  it('have one quick-check band for each stage range they skip', () => {
-    expect(CHECK.bands).toHaveLength(PRESETS.length - 1);
-    CHECK.bands.forEach((band, i) => {
+  it('have one recommendation band for each stage range they skip', () => {
+    expect(RECOMMEND.bands).toHaveLength(PRESETS.length - 1);
+    RECOMMEND.bands.forEach((band, i) => {
       const skipped = STAGES.slice(PRESETS[i].startStage, PRESETS[i + 1].startStage).flatMap((s) => s.skills);
       for (const skill of band.skills) expect(skipped, `band ${i + 1}`).toContain(skill);
     });

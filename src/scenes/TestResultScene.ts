@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, PRESETS, WIDTH } from '../config';
+import { COLORS, PRESETS, TEST, WIDTH } from '../config';
 import { scoreTest, testRecommendation, type Score } from '../learning/testRound';
 import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
 import { loadTests, type SetupData, type TestResultData } from './types';
@@ -41,7 +41,7 @@ export class TestResultScene extends Phaser.Scene {
     makeText(this, WIDTH / 2, 182, `${sec(score.avgMs)} per correct answer`, { fontSize: '19px', color: COLORS.textDim });
     const compare = first
       ? `First test: ${first.correct} of ${first.asked} right, ${sec(first.avgMs)}   →   ${change(score, first)}`
-      : 'After some play you get another test round, to see how much you have improved.';
+      : `This is your "before". After ${TEST.minutesBetween} minutes of play, take it again to see your before and after.`;
     // Green only for a gain; otherwise neutral (never red: a dip is normal from one day to the next).
     const better = first !== null && (score.correct > first.correct || (score.correct === first.correct && (score.avgMs ?? Infinity) < (first.avgMs ?? Infinity)));
     makeText(this, WIDTH / 2, 220, compare, { fontSize: '18px', color: better ? COLORS.good : first ? COLORS.text : COLORS.textDim });
@@ -69,7 +69,7 @@ export class TestResultScene extends Phaser.Scene {
     const name = PRESETS.find((p) => p.key === rec.recommended)?.name;
     makeText(this, WIDTH / 2, 516, `Recommended difficulty: ${name}`, { fontSize: '19px', color: COLORS.good });
 
-    const next = () => this.scene.start('Setup', { check: { ...rec, from: 'Test round' } } satisfies SetupData);
+    const next = () => this.scene.start('Setup', { check: rec } satisfies SetupData);
     const menu = () => this.scene.start('Menu');
     makeButton(this, WIDTH / 2 - 150, 584, 'Continue', next, { hotkey: '⏎', primary: true });
     makeButton(this, WIDTH / 2 + 150, 584, 'Menu', menu, { hotkey: 'Esc' });

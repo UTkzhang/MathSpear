@@ -4,9 +4,8 @@
  * matching forms. Nothing adapts and it never stops early, so one test's score
  * can be compared with the next. Pure TypeScript, no Phaser.
  */
-import { CHECK, TEST, type PresetKey, PRESETS } from '../config';
+import { RECOMMEND, TEST, type Band, type PresetKey, PRESETS } from '../config';
 import { parseExpr } from './expr';
-import { avgCorrectMs, bandPassed, type BandResult } from './placement';
 import { problemFromExpr, tierOfSkill, type Problem, type Skill } from './problems';
 
 export type Form = 'A' | 'B';
@@ -95,6 +94,12 @@ export class TestRound {
   }
 }
 
+/** Average of `ms` over the correct answers; null if none. */
+export function avgCorrectMs(answers: readonly { correct: boolean; ms: number }[]): number | null {
+  const right = answers.filter((a) => a.correct);
+  return right.length ? right.reduce((sum, a) => sum + a.ms, 0) / right.length : null;
+}
+
 export interface Score {
   asked: number;
   correct: number;
@@ -120,13 +125,35 @@ export function scoreTest(record: TestRecord): TestScore {
   };
 }
 
+export interface BandResult {
+  name: string;
+  asked: number;
+  correct: number;
+  /** Average time per correct answer; null if none were correct. */
+  avgMs: number | null;
+  passed: boolean;
+}
+
 /**
- * The difficulty the test points to, by the quick check's rule: sections that
- * match CHECK.bands pass or fail the same way, and the recommendation is how
- * many pass in a row from the first.
+ * A band passes with at least RECOMMEND.passCorrect of every RECOMMEND.outOf
+ * right (3 of 4), and an average time per correct answer within its limit.
+ */
+export function bandPassed(band: Band, asked: number, correct: number, avgMs: number | null): boolean {
+  return (
+    asked > 0 &&
+    correct * RECOMMEND.outOf >= RECOMMEND.passCorrect * asked &&
+    avgMs !== null &&
+    avgMs <= band.maxAvgSec * 1000
+  );
+}
+
+/**
+ * The difficulty the test points to (RECOMMEND in config.ts): each of the first
+ * sections passes or fails as a band, and the recommendation is how many pass
+ * in a row from the first.
  */
 export function testRecommendation(score: TestScore): { results: BandResult[]; recommended: PresetKey } {
-  const results = CHECK.bands.map((band, i) => {
+  const results = RECOMMEND.bands.map((band, i) => {
     const s = score.sections[i];
     return { name: band.name, asked: s.asked, correct: s.correct, avgMs: s.avgMs, passed: bandPassed(band, s.asked, s.correct, s.avgMs) };
   });
@@ -134,18 +161,30 @@ export function testRecommendation(score: TestScore): { results: BandResult[]; r
   return { results, recommended: PRESETS[inARow === -1 ? results.length : inARow].key };
 }
 
-/** Before the first game: nothing played, no test yet, and not turned down. */
-export function beforeTestDue(records: readonly TestRecord[], playMinutes: number, declinedAt: number | null): boolean {
-  return records.length === 0 && playMinutes === 0 && declinedAt === null;
+/**
+ * Minutes of play left before the next test round is offered: TEST.minutesBetween
+ * after the last test, or after the player last said "not now". 0 if neither.
+ */
+export function minutesToNextTest(records: readonly TestRecord[], playMinutes: number, declinedAt: number | null): number {
+  const since = [records[records.length - 1]?.playMinutes, declinedAt].filter((x): x is number => x != null);
+  if (!since.length) return 0;
+  return Math.max(0, TEST.minutesBetween - (playMinutes - Math.max(...since)));
 }
 
 /**
- * At the end of a game: TEST.minutesBetween minutes of play since the last
- * test, or since the player last said "not now". Straight away if neither.
+ * At the end of a game: once TEST.minutesBetween minutes of play have passed
+ * since the last test or "not now", or straight away if neither.
  */
 export function afterTestDue(records: readonly TestRecord[], playMinutes: number, declinedAt: number | null): boolean {
-  if (playMinutes <= 0) return false;
-  const since = [records[records.length - 1]?.playMinutes, declinedAt].filter((x): x is number => x != null);
-  if (!since.length) return true;
-  return playMinutes - Math.max(...since) >= TEST.minutesBetween;
+  return playMinutes > 0 && minutesToNextTest(records, playMinutes, declinedAt) === 0;
+}
+
+/**
+ * What the difficulty screen offers: the "before" test until a first test has
+ * been taken (whatever has been played), then the "after" test whenever one is
+ * due. Never two tests back to back, so the before/after stays meaningful.
+ */
+export function testOffer(records: readonly TestRecord[], playMinutes: number, declinedAt: number | null): 'before' | 'after' | null {
+  if (!records.length) return 'before';
+  return afterTestDue(records, playMinutes, declinedAt) ? 'after' : null;
 }

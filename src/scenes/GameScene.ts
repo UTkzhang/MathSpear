@@ -505,7 +505,8 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- HUD and drawing
 
   private createHud(): void {
-    this.hudHearts = makeText(this, 24, HUD_HEIGHT / 2 + 4, '', { fontSize: '24px', color: COLORS.bad }).setOrigin(0, 0.5);
+    makeText(this, 24, HUD_HEIGHT / 2 + 4, 'Esc to exit', { fontSize: '13px', color: COLORS.textDim }).setOrigin(0, 0.5);
+    this.hudHearts = makeText(this, 108, HUD_HEIGHT / 2 + 4, '', { fontSize: '24px', color: COLORS.bad }).setOrigin(0, 0.5);
     this.hudTarget = makeText(this, WIDTH / 2, HUD_HEIGHT / 2 + 4, '', { fontSize: '28px', fontStyle: 'bold' });
     this.hudGold = makeText(this, WIDTH - 24, HUD_HEIGHT / 2 - 6, '', { fontSize: '20px', color: COLORS.gold }).setOrigin(1, 0.5);
     this.hudLevel = makeText(this, WIDTH - 24, HUD_HEIGHT / 2 + 16, '', { fontSize: '13px', color: COLORS.textDim }).setOrigin(1, 0.5);

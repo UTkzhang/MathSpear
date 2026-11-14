@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { COLORS, HEIGHT, RENDER_SCALE, WIDTH } from './config';
-import { CheckScene } from './scenes/CheckScene';
 import { DataScene } from './scenes/DataScene';
 import { GameScene } from './scenes/GameScene';
 import { LessonScene } from './scenes/LessonScene';
@@ -19,7 +18,7 @@ const game = new Phaser.Game({
   height: HEIGHT * RENDER_SCALE,
   backgroundColor: COLORS.background,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, SetupScene, CheckScene, TestScene, TestResultScene, LessonScene, GameScene, ShopScene, ResultScene, DataScene],
+  scene: [MenuScene, SetupScene, TestScene, TestResultScene, LessonScene, GameScene, ShopScene, ResultScene, DataScene],
 });
 
 // Dev builds only: expose the game for console debugging.

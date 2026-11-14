@@ -36,7 +36,10 @@ export class TestScene extends Phaser.Scene {
     this.round = new TestRound(nextForm(loadTests()));
 
     makeText(this, WIDTH / 2, 50, 'Test round', { fontSize: '38px', fontStyle: 'bold', color: COLORS.accent });
-    const why = this.kind === 'before' ? 'This shows where you are starting from.' : 'This shows how much you have improved.';
+    const why =
+      this.kind === 'before'
+        ? 'This is your "before": where you are starting from.'
+        : 'This is your "after": how much you have improved since your first one.';
     makeText(this, WIDTH / 2, 92, `${why} Type each answer and press Enter.`, { fontSize: '17px', color: COLORS.textDim });
     makeText(this, WIDTH / 2, 116, "There's no timer, but your time is noted. Skip any you don't know.", {
       fontSize: '17px',

@@ -146,7 +146,7 @@ export class ResultScene extends Phaser.Scene {
 
   /** The test round is due: offer it first, with playing on as "not now". */
   private testButtons(): void {
-    makeText(this, WIDTH / 2, 522, `Time for a test round: ${TEST_LENGTH} typed problems, to see how much you've improved.`, {
+    makeText(this, WIDTH / 2, 522, `Time for your "after" test round: ${TEST_LENGTH} typed problems, to see your before and after.`, {
       fontSize: '18px',
       color: COLORS.good,
     });

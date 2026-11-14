@@ -8,7 +8,7 @@ const PAD_STEP = { x: 86, y: 56 };
 
 /**
  * A problem, the typed answer under it, and an on-screen number pad (for mouse
- * and touch). Used by the quick check and the test round.
+ * and touch). Used by the test round and the lessons.
  *
  * Typed answers come from the DOM keydown event directly: Phaser's keyboard
  * queue is made for held game keys and can hand the scene the same quick

@@ -251,8 +251,8 @@ export const GAME = {
 };
 
 /**
- * Difficulty: where a run starts in STAGES. The quick check (CHECK) recommends
- * one, and the player can pick any. Problem types from skipped stages start one
+ * Difficulty: where a run starts in STAGES. The test round recommends one
+ * (RECOMMEND), and the player can pick any. Problem types from skipped stages start one
  * number size up (`skippedSize`), since the player already knows them.
  * Enemy speed and gear are the same on every setting.
  */
@@ -265,24 +265,24 @@ export const PRESETS = [
 export type PresetKey = (typeof PRESETS)[number]['key'];
 export const SKIPPED_SIZE = 1;
 
-export interface CheckBand {
+export interface Band {
+  /** The same name as the matching TEST section. */
   name: string;
-  /** Problem types asked in this band, at the smallest number size. */
+  /** Its problem types. */
   skills: Skill[];
   /** Average time per correct answer (typing included) to pass. */
   maxAvgSec: number;
 }
 
 /**
- * The quick check: a few typed-answer problems that recommend a difficulty.
- * Band i covers the stages that PRESETS[i + 1] skips. A band passes with
- * `passCorrect` of `perBand` right, fast enough on average; the check stops at
- * the first band that doesn't pass. Bands passed = recommended PRESETS index.
+ * How the test round recommends a difficulty. Band i is TEST section i and
+ * covers the stages that PRESETS[i + 1] skips. A band passes with `passCorrect`
+ * of every `outOf` right (3 of the section's 4), fast enough on average. The
+ * recommendation is how many pass in a row from the first: 0 = Starter, all = Expert.
  */
-export const CHECK: { perBand: number; passCorrect: number; feedbackMs: number; bands: CheckBand[] } = {
-  perBand: 3,
-  passCorrect: 2,
-  feedbackMs: 700,
+export const RECOMMEND: { passCorrect: number; outOf: number; bands: Band[] } = {
+  passCorrect: 3,
+  outOf: 4,
   bands: [
     { name: 'Adding and subtracting', skills: ['add-facts', 'sub-facts'], maxAvgSec: 6 },
     { name: 'Times tables', skills: ['mul-facts', 'div-facts'], maxAvgSec: 7 },
@@ -299,14 +299,15 @@ export interface TestSlot {
 
 /**
  * The test round (learning/testRound.ts): the before/after measure. Unlike the
- * game and the quick check it never adapts or stops early. Everyone gets these
+ * game it never adapts or stops early. Everyone gets these
  * problems in this order, so scores can be compared from one test to the next.
  * Forms A and B alternate (A first) so nobody just remembers the answers.
  *
- * It is offered before the first game, then at the end of a game once there
- * have been `minutesBetween` minutes of play since the last test (or since the
- * player last said "not now"). The first three sections match CHECK.bands, so
- * the test also recommends a difficulty.
+ * The difficulty screen offers it until the first one is taken (the "before").
+ * After that it's offered, there and at the end of a game, once there have been
+ * `minutesBetween` minutes of play since the last test (or since the player last
+ * said "not now"). The first three sections match RECOMMEND.bands, so the test
+ * is also what recommends a difficulty.
  */
 export const TEST: { minutesBetween: number; sections: { name: string; slots: TestSlot[] }[] } = {
   minutesBetween: 10,

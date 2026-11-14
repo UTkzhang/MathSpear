@@ -4,10 +4,8 @@ A 2D arena game for practising mental math (CS6460 Educational Technology projec
 Each enemy carries a problem. The HUD shows a target ("Find and hit 42"), and you
 have to hit the one enemy whose problem equals it with the tip of your spear.
 
-**Difficulty and the quick check.** Before a run you pick where the math starts. The
-quick check (up to 9 typed-answer problems, about a minute) recommends a setting: it goes
-band by band (facts + and −, times tables, bigger numbers) and stops at the first band
-you don't pass (2 of 3 right, fast enough on average). You can pick any setting anyway.
+**Difficulty.** Before a run you pick where the math starts. The test round (below)
+recommends a setting, but you can pick any of them.
 
 | Difficulty | Starts with | Example |
 | --- | --- | --- |
@@ -97,18 +95,23 @@ listed, with the steps for the latest one.
 
 **The test round (before and after).** This is the main learning measure. It has 16
 typed-answer problems in a fixed order, from facts up to parentheses: 4 adding and
-subtracting, 4 times tables, 4 bigger numbers and 4 multi-step. Unlike the game and the
-quick check, it never adapts and never stops early. That means scores can be compared
-from one test to the next.
+subtracting, 4 times tables, 4 bigger numbers and 4 multi-step. Unlike the game, it never
+adapts and never stops early. That means scores can be compared from one test to the next.
+The difficulty screen pitches it as a before and after: take it now, take it again after some
+play, and see how much you improved.
 
 - **Two versions:** forms A and B match problem by problem (same type, same number sizes,
   different numbers, for example 15−7 and 13−6). They alternate, starting with A, so
   nobody just remembers the answers.
-- **Before:** before the first game, the difficulty screen offers the test round in place
-  of the quick check. Its first three sections use the quick check's rule, so it also
-  recommends a difficulty.
-- **After:** the end-of-game screen offers it once there have been 10 minutes of play since
-  the last test, or since the player last chose "Not now".
+- **Before:** the difficulty screen offers it until the first test is taken.
+- **It also recommends a difficulty:** each of the first three sections passes with 3 of its
+  4 right, fast enough on average (6 s per answer for facts, 7 s for times tables, 12 s for
+  bigger numbers). The number of sections passed in a row picks the setting: 0 is Starter,
+  all 3 is Expert. This is `RECOMMEND` in `src/config.ts`.
+- **After:** the end-of-game screen and the difficulty screen offer it once there have been
+  10 minutes of play since the last test, or since the player last chose "Not now". It is
+  never offered twice in a row, so the before and after stay apart. In between, the
+  difficulty screen says how many minutes of play are left.
 - **No feedback during the test:** a wrong answer just moves on, and a problem can be
   skipped. The results screen shows right answers and time per section, next to the first
   test, and lists the misses.
@@ -138,7 +141,7 @@ Other scripts:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Unit tests for the problem generator, worked steps, stages and lessons, adaptivity, quick check, test round, event log and round rules (Vitest) |
+| `npm test` | Unit tests for the problem generator, worked steps, stages and lessons, adaptivity, test round and recommendation, event log and round rules (Vitest) |
 | `npm run build` | Type-check and build the static site into `dist/` |
 | `npm run preview` | Serve the built `dist/` locally |
 
@@ -154,8 +157,8 @@ Other scripts:
 ## Controls
 
 WASD or arrow keys to move (the spear points the way you move). You can also hold the
-mouse button or a finger where you want to go. The quick check, the test round and the
-lesson problems take typed answers, or the on-screen number pad (S skips a problem). In a
+mouse button or a finger where you want to go. The test round and the lesson problems
+take typed answers, or the on-screen number pad (S skips a problem). In a
 lesson, Enter goes on and S skips to the level. Esc returns to the menu.
 
 ## Deploy
@@ -169,25 +172,24 @@ Cloudflare Pages, itch.io) as is.
 
 ```
 src/
-  config.ts            tunable values (STAGES, difficulty, quick check, test round problems, gear and prices, gold, adaptivity)
+  config.ts            tunable values (STAGES and lessons, difficulty, test round problems and recommendation, gear and prices, gold, adaptivity)
   learning/            plain TypeScript, no Phaser, unit-tested
     expr.ts            expression trees: evaluate, format, parse
     problems.ts        problem generator (4 tiers of skills, 4 difficulty steps each)
     explain.ts         worked steps for any problem (lessons, wrong-hit hints, summaries)
     adapt.ts           rates each skill at every shop; moves its number size, picks review
-    placement.ts       the quick check that recommends a difficulty
-    testRound.ts       the before/after test round: forms A and B, scoring, when it's due
+    testRound.ts       the before/after test round: forms A and B, scoring, recommendation, when it's offered
     rng.ts             seeded RNG
   game/
     round.ts           round rules: targets, hits, spear lock
     run.ts             a run: levels and stages, lessons, shop cadence, gold, purchases, the saved run record
     gold.ts            gold per hit, end-of-run numbers
     physics.ts         circle movement and collisions
-  scenes/              Phaser scenes: Menu, Setup (difficulty), Check (quick check),
-                       Test and TestResult (test round), Lesson, Game (+ tutorial script),
-                       Shop, Result (summary), Data (download and delete)
+  scenes/              Phaser scenes: Menu, Setup (difficulty), Test and TestResult
+                       (test round), Lesson, Game (+ tutorial script), Shop, Result
+                       (summary), Data (download and delete)
   ui/widgets.ts        text and button helpers
-  ui/answerPad.ts      typed answer and on-screen number pad (quick check, test round, lessons)
+  ui/answerPad.ts      typed answer and on-screen number pad (test round, lessons)
 tests/                 Vitest tests
 ```
 
@@ -201,7 +203,7 @@ end summary.
 - a slow ramp of stages from single-digit facts to parentheses
 - gold and a shop every 3 levels (speed, shield, hearts)
 - adaptivity at every shop (number sizes, review of weak problem types)
-- difficulty settings with a quick check
+- difficulty settings, recommended by the test round
 - the before/after test round (two matching forms)
 - lessons before each new stage (strategy, worked example, one to try)
 - worked steps after a wrong hit

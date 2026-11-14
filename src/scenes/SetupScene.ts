@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, PRESETS, WIDTH, type PresetKey } from '../config';
 import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
-import { beforeTestDue, TEST_LENGTH } from '../learning/testRound';
+import { minutesToNextTest, testOffer, TEST_LENGTH } from '../learning/testRound';
 import {
   levelsText,
   loadBest,
@@ -21,9 +21,9 @@ const ROW_GAP = 70;
 const NUMBER_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR'];
 
 /**
- * Pick a difficulty (where the math starts, PRESETS in config.ts). The quick
- * check or the test round recommends one; any can be picked. Before the first
- * game, the test round is offered here in place of the quick check.
+ * Pick a difficulty (where the math starts, PRESETS in config.ts). The test
+ * round recommends one, but any can be picked. The test round is offered here
+ * until the first one is taken (the "before"), then whenever the "after" is due.
  */
 export class SetupScene extends Phaser.Scene {
   constructor() {
@@ -34,28 +34,32 @@ export class SetupScene extends Phaser.Scene {
     fitCamera(this);
     const recommended = data.check?.recommended ?? loadRecommended();
     const last = loadPreset();
-    const firstTime = beforeTestDue(loadTests(), loadPlayMinutes(), loadTestDeclinedAt());
+    const tests = loadTests();
+    const offer = data.check ? null : testOffer(tests, loadPlayMinutes(), loadTestDeclinedAt());
 
     makeText(this, WIDTH / 2, 56, 'Choose a difficulty', { fontSize: '38px', fontStyle: 'bold', color: COLORS.accent });
+    const lines: [string, string][] = [];
     if (data.check) {
       const bands = data.check.results.map((r) => `${r.name} ${r.passed ? '✓' : '✗'}`).join('     ');
-      makeText(this, WIDTH / 2, 100, `${data.check.from}:  ${bands}`, { fontSize: '18px', color: COLORS.textDim });
-      makeText(this, WIDTH / 2, 132, `We recommend ${nameOf(data.check.recommended)}.`, { fontSize: '20px', color: COLORS.good });
-    } else if (firstTime) {
-      makeText(this, WIDTH / 2, 100, `New here? Take the test round first: ${TEST_LENGTH} typed problems, a few minutes.`, {
-        fontSize: '19px',
-        color: COLORS.good,
-      });
-      makeText(this, WIDTH / 2, 130, 'It recommends where to start, and later shows how much you have improved.', {
-        fontSize: '17px',
-        color: COLORS.textDim,
-      });
+      lines.push([`Test round:  ${bands}`, COLORS.textDim], [`We recommend ${nameOf(data.check.recommended)}. You can pick any.`, COLORS.good]);
+    } else if (offer === 'before') {
+      lines.push(
+        ['Get a before and after: take the test round now, and again after some play.', COLORS.good],
+        [`${TEST_LENGTH} typed problems, a few minutes. It also recommends where to start, but you can pick any.`, COLORS.textDim],
+      );
+    } else if (offer === 'after') {
+      lines.push(
+        ['Time for your "after" test round: see how much you have improved since the first one.', COLORS.good],
+        [recommended ? `Your last test recommended ${nameOf(recommended)}. You can pick any.` : 'You can pick any difficulty.', COLORS.textDim],
+      );
     } else {
-      const line = recommended
-        ? `We recommend ${nameOf(recommended)}, from your last check. You can take the quick check again any time.`
-        : 'Not sure? Take the quick check: a few problems, about a minute.';
-      makeText(this, WIDTH / 2, 110, line, { fontSize: '18px', color: COLORS.textDim });
+      const wait = Math.max(1, Math.ceil(minutesToNextTest(tests, loadPlayMinutes(), loadTestDeclinedAt())));
+      lines.push(
+        [recommended ? `Your test round recommended ${nameOf(recommended)}. You can pick any.` : 'Pick any difficulty.', COLORS.text],
+        [`Your next test round comes after about ${wait} more ${wait === 1 ? 'minute' : 'minutes'} of play, for your before and after.`, COLORS.textDim],
+      );
     }
+    lines.forEach(([text, color], i) => makeText(this, WIDTH / 2, 100 + i * 30, text, { fontSize: i === 0 ? '19px' : '17px', color }));
 
     PRESETS.forEach((preset, i) => {
       const y = ROW_TOP + i * ROW_GAP;
@@ -74,16 +78,18 @@ export class SetupScene extends Phaser.Scene {
       onKey(this, NUMBER_KEYS[i], start);
     });
 
-    const check = firstTime
-      ? () => this.scene.start('Test', { kind: 'before' } satisfies TestData)
-      : () => this.scene.start('Check');
-    const checkLabel = firstTime ? 'Test round' : 'Quick check';
     const back = () => this.scene.start('Menu');
-    makeButton(this, WIDTH / 2 - 150, 510, checkLabel, check, { hotkey: 'C', primary: firstTime || !recommended });
-    makeButton(this, WIDTH / 2 + 150, 510, 'Back', back, { hotkey: 'Esc' });
-    onKey(this, 'C', check);
     onKey(this, 'ESC', back);
-    onKey(this, 'ENTER', () => (recommended && !firstTime ? this.start(recommended) : check()));
+    if (offer) {
+      const test = () => this.scene.start('Test', { kind: offer } satisfies TestData);
+      makeButton(this, WIDTH / 2 - 150, 510, 'Test round', test, { hotkey: 'C', primary: true });
+      makeButton(this, WIDTH / 2 + 150, 510, 'Back', back, { hotkey: 'Esc' });
+      onKey(this, 'C', test);
+      onKey(this, 'ENTER', test);
+    } else {
+      makeButton(this, WIDTH / 2, 510, 'Back', back, { hotkey: 'Esc' });
+      onKey(this, 'ENTER', () => this.start(recommended ?? last ?? PRESETS[0].key));
+    }
 
     makeText(this, WIDTH / 2, 580, 'Difficulty only changes where the math starts. Gear, gold and enemies work the same on every setting.', {
       fontSize: '15px',

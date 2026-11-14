@@ -1,8 +1,7 @@
 import { PRESETS, type PresetKey } from '../config';
 import { runRecord, type RunEnd, type RunRecord, type RunState } from '../game/run';
 import type { CheckpointReport } from '../learning/adapt';
-import type { BandResult } from '../learning/placement';
-import type { TestRecord } from '../learning/testRound';
+import type { BandResult, TestRecord } from '../learning/testRound';
 
 export type Mode = 'play' | 'tutorial';
 
@@ -27,9 +26,9 @@ export interface ShopData {
   report: CheckpointReport;
 }
 
-/** The difficulty screen, optionally right after the quick check or a test round. */
+/** The difficulty screen, optionally right after a test round (with its recommendation). */
 export interface SetupData {
-  check?: { results: BandResult[]; recommended: PresetKey; from: 'Quick check' | 'Test round' };
+  check?: { results: BandResult[]; recommended: PresetKey };
 }
 
 /** A test round: before the first game, or after one. */
@@ -61,7 +60,7 @@ export const STORAGE_KEYS = {
   best: (preset: PresetKey) => `mathspear.best.${preset}`,
   /** The difficulty picked last time. */
   preset: 'mathspear.difficulty',
-  /** The latest recommendation (quick check or test round). */
+  /** The latest test round's recommended difficulty. */
   recommended: 'mathspear.recommended',
   /** Every finished test round, oldest first (TestRecord[] as JSON). */
   tests: 'mathspear.tests',

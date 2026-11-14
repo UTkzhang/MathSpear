@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME, PRESETS, WIDTH, type PresetKey } from '../config';
+import { COLORS, PRESETS, WIDTH, type PresetKey } from '../config';
 import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
 import { levelsText, loadBest, loadPreset, type GameData } from './types';
 
@@ -43,21 +43,21 @@ export class MenuScene extends Phaser.Scene {
 
     makeButton(this, WIDTH / 2, 262, 'Tutorial', tutorial, { hotkey: 'T', width: 340 });
     makeButton(this, WIDTH / 2, 330, 'Play', play, { hotkey: '⏎', primary: true, width: 340 });
-    makeButton(this, WIDTH / 2, 530, 'Your data', data, { hotkey: 'D', width: 240 });
+    makeButton(this, WIDTH / 2, 398, 'Your data', data, { hotkey: 'D', width: 340 });
+    makeText(this, WIDTH / 2, 438, 'All your data is stored locally in this browser and stays private to your device. We do not store it online.', {
+      fontSize: '13px',
+      color: COLORS.textDim,
+    });
     onKey(this, 'T', tutorial);
     onKey(this, 'D', data);
     onKey(this, 'ENTER', play);
     onKey(this, 'SPACE', play);
 
-    makeText(this, WIDTH / 2, 400, `A short lesson before each new kind of problem  ·  gold and a shop every ${GAME.levelsPerShop} levels  ·  the math grows with you`, {
-      fontSize: '17px',
-      color: COLORS.textDim,
-    });
     const preset: PresetKey | null = loadPreset();
     const best = preset ? loadBest(preset) : 0;
     if (preset && best > 0) {
       const name = PRESETS.find((p) => p.key === preset)?.name;
-      makeText(this, WIDTH / 2, 470, `Best run (${name}): ${levelsText(best)} cleared`, { fontSize: '22px', color: COLORS.accent });
+      makeText(this, WIDTH / 2, 500, `Best run (${name}): ${levelsText(best)} cleared`, { fontSize: '22px', color: COLORS.accent });
     }
 
     makeText(this, WIDTH / 2, 604, 'Move: WASD / arrow keys, or hold the mouse   ·   Esc: back to menu', {
