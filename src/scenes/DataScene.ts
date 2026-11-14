@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, WIDTH } from '../config';
 import { scoreTest, TEST_LENGTH } from '../learning/testRound';
-import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
+import { fitCamera, makeButton, makePanel, makeText, makeTitle, onKey, UI } from '../ui/widgets';
 import { exportData, loadPlayMinutes, loadRuns, loadTests, resetData } from './types';
 
 const CONFIRM_MS = 4000; // "Delete everything" has to be pressed twice within this time
@@ -26,11 +26,7 @@ export class DataScene extends Phaser.Scene {
     const hits = runs.reduce((n, r) => n + r.hits.length, 0);
     const tries = runs.flatMap((r) => r.lessonTries);
 
-    makeText(this, WIDTH / 2, 56, 'Your data', { fontSize: '38px', fontStyle: 'bold', color: COLORS.accent });
-    makeText(this, WIDTH / 2, 98, 'Everything is saved only in this browser. Nothing is sent anywhere.', {
-      fontSize: '17px',
-      color: COLORS.textDim,
-    });
+    makeTitle(this, 'Your data', 'Everything is saved only in this browser. Nothing is sent anywhere.');
 
     const score = (i: number) => `${scoreTest(tests[i]).correct}/${TEST_LENGTH}`;
     const testLine = tests.length ? `${tests.length}  ·  first ${score(0)}${tests.length > 1 ? `, latest ${score(tests.length - 1)}` : ''}` : 'none yet';
@@ -41,22 +37,24 @@ export class DataScene extends Phaser.Scene {
       ['Hits saved', String(hits)],
       ['Lesson problems tried', tries.length ? `${tries.length} (${tries.filter((t) => t.correct).length} right)` : 'none yet'],
     ];
+    const panel = { w: 600, top: 132, rowH: 34 };
+    makePanel(this, WIDTH / 2 - panel.w / 2, panel.top, panel.w, rows.length * panel.rowH + 32);
     rows.forEach(([label, value], i) => {
-      const y = 160 + i * 34;
-      makeText(this, WIDTH / 2 - 20, y, label, { fontSize: '19px', color: COLORS.textDim }).setOrigin(1, 0.5);
-      makeText(this, WIDTH / 2 + 20, y, value, { fontSize: '19px' }).setOrigin(0, 0.5);
+      const y = panel.top + 16 + panel.rowH / 2 + i * panel.rowH;
+      makeText(this, WIDTH / 2 - 30, y, label, { fontSize: '18px', color: COLORS.textDim }).setOrigin(1, 0.5);
+      makeText(this, WIDTH / 2 - 6, y, value, { fontSize: '18px' }).setOrigin(0, 0.5);
     });
 
     makeText(
       this,
       WIDTH / 2,
-      370,
+      398,
       'The download is one file with every test round answer and every hit in every run\n' +
         '(the problem, right or wrong, and how long it took). If you are helping test\n' +
         'Math Spear, this is the file to send. Sending it is always your choice.',
       { fontSize: '16px', color: COLORS.textDim, align: 'center', lineSpacing: 4 },
     );
-    const status = makeText(this, WIDTH / 2, 438, data.deleted ? 'Deleted. Math Spear has nothing saved in this browser now.' : '', {
+    const status = makeText(this, WIDTH / 2, 482, data.deleted ? 'Deleted. Math Spear has nothing saved in this browser now.' : '', {
       fontSize: '17px',
       color: COLORS.good,
     });
@@ -77,9 +75,9 @@ export class DataScene extends Phaser.Scene {
     };
     const back = () => this.scene.start('Menu');
 
-    makeButton(this, WIDTH / 2 - 150, 496, 'Download my data', download, { hotkey: 'D', primary: true });
-    makeButton(this, WIDTH / 2 + 150, 496, 'Delete everything', remove, { hotkey: 'X' });
-    makeButton(this, WIDTH / 2, 572, 'Back', back, { hotkey: 'Esc' });
+    makeButton(this, WIDTH / 2 - 270, UI.buttonsY, 'Download my data', download, { hotkey: 'D', primary: true, width: 250 });
+    makeButton(this, WIDTH / 2, UI.buttonsY, 'Delete everything', remove, { hotkey: 'X', width: 250 });
+    makeButton(this, WIDTH / 2 + 270, UI.buttonsY, 'Back', back, { hotkey: 'Esc', width: 250 });
     onKey(this, 'D', download);
     onKey(this, 'X', remove);
     onKey(this, 'ESC', back);

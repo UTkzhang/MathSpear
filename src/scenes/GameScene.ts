@@ -31,7 +31,7 @@ import {
 import { explainLine } from '../learning/explain';
 import type { Problem } from '../learning/problems';
 import { randomSeed, type Rng } from '../learning/rng';
-import { fitCamera, makeText, onKey } from '../ui/widgets';
+import { fitCamera, hasKeyboard, makeText, onKey, onPress } from '../ui/widgets';
 import { Tutorial } from './tutorial';
 import {
   addPlayMs,
@@ -62,6 +62,10 @@ export interface SpawnOptions {
 }
 
 const ARENA: Bounds = { left: 16, top: HUD_HEIGHT + 8, right: WIDTH - 16, bottom: HEIGHT - 16 };
+const ARENA_MID_Y = (ARENA.top + ARENA.bottom) / 2;
+/** The "Level N" banner sits just above the middle, and the player starts below it, so they never overlap. */
+const BANNER_Y = ARENA_MID_Y - 50;
+const PLAYER_START = { x: WIDTH / 2, y: ARENA_MID_Y + 100 };
 
 /** One text size for a whole wave: full size for short problems, shrinking for long ones. */
 function waveFontSize(problems: Problem[]): number {
@@ -108,6 +112,8 @@ export class GameScene extends Phaser.Scene {
   private hudLevel!: Phaser.GameObjects.Text;
   private hudLock!: Phaser.GameObjects.Text;
   private banner!: Phaser.GameObjects.Text;
+  private bannerSub!: Phaser.GameObjects.Text;
+  private bannerBg!: Phaser.GameObjects.Graphics;
   private promptBg!: Phaser.GameObjects.Graphics;
   private promptText!: Phaser.GameObjects.Text;
 
@@ -151,7 +157,9 @@ export class GameScene extends Phaser.Scene {
     arena.strokeRoundedRect(ARENA.left, ARENA.top, ARENA.right - ARENA.left, ARENA.bottom - ARENA.top, 12);
 
     this.g = this.add.graphics();
-    this.player = { x: WIDTH / 2, y: (ARENA.top + ARENA.bottom) / 2, vx: 0, vy: 0, r: PLAYER.radius };
+    // The tutorial has no banner, so there the player starts in the middle.
+    const start = this.mode === 'tutorial' ? { x: WIDTH / 2, y: ARENA_MID_Y } : PLAYER_START;
+    this.player = { ...start, vx: 0, vy: 0, r: PLAYER.radius };
 
     this.createHud();
     this.createPrompt();
@@ -509,32 +517,33 @@ export class GameScene extends Phaser.Scene {
 
   private createHud(): void {
     // Esc, or a click or tap on the label itself (touch screens have no Esc key).
-    const exit = makeText(this, 24, HUD_HEIGHT / 2 + 4, 'Esc to exit', { fontSize: '13px', color: COLORS.textDim })
+    const exit = makeText(this, 24, HUD_HEIGHT / 2 + 4, hasKeyboard(this) ? 'Esc to exit' : 'Exit', { fontSize: '13px', color: COLORS.textDim })
       .setOrigin(0, 0.5)
       .setInteractive({ useHandCursor: true });
-    exit.on('pointerover', () => exit.setColor(COLORS.text));
-    exit.on('pointerout', () => exit.setColor(COLORS.textDim));
-    exit.on('pointerup', () => this.exit());
+    onPress(exit, () => this.exit(), { over: () => exit.setColor(COLORS.text), out: () => exit.setColor(COLORS.textDim) });
     this.hudHearts = makeText(this, 108, HUD_HEIGHT / 2 + 4, '', { fontSize: '24px', color: COLORS.bad }).setOrigin(0, 0.5);
     this.hudTarget = makeText(this, WIDTH / 2, HUD_HEIGHT / 2 + 4, '', { fontSize: '28px', fontStyle: 'bold' });
     this.hudGold = makeText(this, WIDTH - 24, HUD_HEIGHT / 2 - 6, '', { fontSize: '20px', color: COLORS.gold }).setOrigin(1, 0.5);
     this.hudLevel = makeText(this, WIDTH - 24, HUD_HEIGHT / 2 + 16, '', { fontSize: '13px', color: COLORS.textDim }).setOrigin(1, 0.5);
     this.hudLock = makeText(this, WIDTH / 2, HUD_HEIGHT + 26, 'Spear locked', { fontSize: '15px', color: COLORS.bad }).setVisible(false);
-    this.banner = makeText(this, WIDTH / 2, (ARENA.top + ARENA.bottom) / 2 - 20, '', {
-      fontSize: '52px',
-      fontStyle: 'bold',
-      color: COLORS.accent,
-      align: 'center',
-    }).setAlpha(0);
+    // The banner is drawn over everything in the arena, on its own dark backdrop.
+    this.bannerBg = this.add.graphics().setDepth(20).setAlpha(0);
+    this.banner = makeText(this, WIDTH / 2, BANNER_Y, '', { fontSize: '48px', fontStyle: 'bold', color: COLORS.accent }).setDepth(21).setAlpha(0);
+    this.bannerSub = makeText(this, WIDTH / 2, BANNER_Y + 44, '', { fontSize: '20px', color: COLORS.text }).setDepth(21).setAlpha(0);
     this.updateHud();
   }
 
   private showBanner(title: string, subtitle: string): void {
-    this.tweens.killTweensOf(this.banner);
+    const parts = [this.banner, this.bannerSub, this.bannerBg];
+    this.tweens.killTweensOf(parts);
     this.banner.setText(title).setAlpha(1).setScale(0.8);
-    const sub = makeText(this, WIDTH / 2, this.banner.y + 46, subtitle, { fontSize: '20px', color: COLORS.textDim });
+    this.bannerSub.setText(subtitle).setAlpha(1);
+    const w = Math.max(this.banner.width, this.bannerSub.width) + 80;
+    this.bannerBg.clear().setAlpha(1);
+    this.bannerBg.fillStyle(0x0b0d14, 0.78);
+    this.bannerBg.fillRoundedRect(WIDTH / 2 - w / 2, BANNER_Y - 46, w, 116, 16);
     this.tweens.add({ targets: this.banner, scale: 1, duration: 250, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: [this.banner, sub], alpha: 0, delay: GAME.levelBannerMs - 300, duration: 300, onComplete: () => sub.destroy() });
+    this.tweens.add({ targets: parts, alpha: 0, delay: GAME.levelBannerMs - 300, duration: 300 });
   }
 
   private createPrompt(): void {

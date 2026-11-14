@@ -10,7 +10,7 @@ import { testItems } from '../src/learning/testRound';
 function expectSound(text: string): void {
   const expr = parseExpr(text);
   const answer = evaluate(expr);
-  const { how, steps, after } = explain(expr);
+  const { how, steps, after, before } = explain(expr);
   expect(how.length, text).toBeGreaterThan(0);
   expect(steps.length, text).toBeGreaterThanOrEqual(1);
   expect(steps.length, text).toBeLessThanOrEqual(4);
@@ -20,6 +20,16 @@ function expectSound(text: string): void {
     expect(evaluate(parseExpr(m![1])), `${text}: "${s}"`).toBe(Number(m![2]));
   }
   expect(Number(steps[steps.length - 1].split(' = ')[1]), text).toBe(answer);
+  if (before) {
+    // The marked part of each "before" is exactly what that step works out.
+    expect(before).toHaveLength(steps.length);
+    before.forEach((b, i) => {
+      const marked = /\u0001\(?(.+?)\)?\u0002/.exec(b);
+      expect(marked, b).not.toBeNull();
+      expect(marked![1], b).toBe(steps[i].split(' = ')[0]);
+      expect(evaluate(parseExpr(b.replace(/[\u0001\u0002]/g, ''))), b).toBe(answer);
+    });
+  }
   if (after) {
     expect(after).toHaveLength(steps.length);
     for (const rest of after) expect(evaluate(parseExpr(rest)), `${text} → ${rest}`).toBe(answer);
@@ -68,11 +78,17 @@ describe('explain', () => {
   });
 
   it('works multi-step problems one operation at a time, in the right order', () => {
-    expect(explain(parseExpr('3+4×2'))).toEqual({ how: '× and ÷ come before + and −', steps: ['4×2 = 8', '3+8 = 11'], after: ['3+8', '11'] });
+    expect(explain(parseExpr('3+4×2'))).toEqual({
+      how: '× and ÷ come before + and −',
+      steps: ['4×2 = 8', '3+8 = 11'],
+      after: ['3+8', '11'],
+      before: ['3+\u00014×2\u0002', '\u00013+8\u0002'],
+    });
     expect(explain(parseExpr('2+(24÷2)×5'))).toEqual({
       how: 'Parentheses first, then × and ÷, then + and −',
       steps: ['24÷2 = 12', '12×5 = 60', '2+60 = 62'],
       after: ['2+12×5', '2+60', '62'],
+      before: ['2+\u0001(24÷2)\u0002×5', '2+\u000112×5\u0002', '\u00012+60\u0002'],
     });
     expect(explain(parseExpr('(18−6)÷3')).how).toBe('Parentheses first');
   });

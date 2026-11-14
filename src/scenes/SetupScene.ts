@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, PRESETS, WIDTH, type PresetKey } from '../config';
-import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
+import { fitCamera, makeButton, makeText, makeTitle, onKey, UI } from '../ui/widgets';
 import { minutesToNextTest, testOffer, TEST_LENGTH } from '../learning/testRound';
 import {
   levelsText,
@@ -16,8 +16,8 @@ import {
   type TestData,
 } from './types';
 
-const ROW_TOP = 196;
-const ROW_GAP = 70;
+const ROW_TOP = 194;
+const ROW_GAP = 72;
 const NUMBER_KEYS = ['ONE', 'TWO', 'THREE', 'FOUR'];
 
 /**
@@ -37,7 +37,7 @@ export class SetupScene extends Phaser.Scene {
     const tests = loadTests();
     const offer = data.check ? null : testOffer(tests, loadPlayMinutes(), loadTestDeclinedAt());
 
-    makeText(this, WIDTH / 2, 56, 'Choose a difficulty', { fontSize: '38px', fontStyle: 'bold', color: COLORS.accent });
+    makeTitle(this, 'Choose a difficulty');
     const lines: [string, string][] = [];
     if (data.check) {
       const bands = data.check.results.map((r) => `${r.name} ${r.passed ? '✓' : '✗'}`).join('     ');
@@ -59,12 +59,15 @@ export class SetupScene extends Phaser.Scene {
         [`Your next test round comes after about ${wait} more ${wait === 1 ? 'minute' : 'minutes'} of play, for your before and after.`, COLORS.textDim],
       );
     }
-    lines.forEach(([text, color], i) => makeText(this, WIDTH / 2, 100 + i * 30, text, { fontSize: i === 0 ? '19px' : '17px', color }));
+    lines.forEach(([text, color], i) => makeText(this, WIDTH / 2, UI.subtitleY + i * 26, text, { fontSize: i === 0 ? '18px' : '16px', color }));
 
+    // Enter starts the test round when it's offered, and the recommended difficulty otherwise.
+    const enterStarts = offer ? null : (recommended ?? last ?? PRESETS[0].key);
     PRESETS.forEach((preset, i) => {
       const y = ROW_TOP + i * ROW_GAP;
       const start = () => this.start(preset.key);
-      makeButton(this, WIDTH / 2 - 190, y, preset.name, start, { hotkey: String(i + 1), width: 240, primary: preset.key === recommended });
+      const isDefault = preset.key === enterStarts;
+      makeButton(this, WIDTH / 2 - 190, y, preset.name, start, { hotkey: isDefault ? [String(i + 1), '⏎'] : String(i + 1), width: 240, primary: isDefault });
       makeText(this, WIDTH / 2 - 40, y - 10, `${preset.about}  ·  ${preset.example}`, { fontSize: '18px' }).setOrigin(0, 0.5);
       const notes = [
         preset.key === recommended ? 'Recommended' : '',
@@ -78,23 +81,23 @@ export class SetupScene extends Phaser.Scene {
       onKey(this, NUMBER_KEYS[i], start);
     });
 
+    makeText(this, WIDTH / 2, 492, 'Difficulty only changes where the math starts. Gear, gold and enemies work the same on every setting.', {
+      fontSize: '15px',
+      color: COLORS.textDim,
+    });
+
     const back = () => this.scene.start('Menu');
     onKey(this, 'ESC', back);
     if (offer) {
       const test = () => this.scene.start('Test', { kind: offer } satisfies TestData);
-      makeButton(this, WIDTH / 2 - 150, 510, 'Test round', test, { hotkey: 'C', primary: true });
-      makeButton(this, WIDTH / 2 + 150, 510, 'Back', back, { hotkey: 'Esc' });
+      makeButton(this, WIDTH / 2 - 150, UI.buttonsY, 'Test round', test, { hotkey: ['C', '⏎'], primary: true });
+      makeButton(this, WIDTH / 2 + 150, UI.buttonsY, 'Back', back, { hotkey: 'Esc' });
       onKey(this, 'C', test);
       onKey(this, 'ENTER', test);
     } else {
-      makeButton(this, WIDTH / 2, 510, 'Back', back, { hotkey: 'Esc' });
-      onKey(this, 'ENTER', () => this.start(recommended ?? last ?? PRESETS[0].key));
+      makeButton(this, WIDTH / 2, UI.buttonsY, 'Back', back, { hotkey: 'Esc' });
+      if (enterStarts) onKey(this, 'ENTER', () => this.start(enterStarts));
     }
-
-    makeText(this, WIDTH / 2, 580, 'Difficulty only changes where the math starts. Gear, gold and enemies work the same on every setting.', {
-      fontSize: '15px',
-      color: COLORS.textDim,
-    });
   }
 
   private start(preset: PresetKey): void {

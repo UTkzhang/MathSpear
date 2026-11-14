@@ -20,6 +20,11 @@ export interface Explanation {
   steps: string[];
   /** Multi-step problems only: what is left after each step ("2+12×5", "2+60", "62"). */
   after?: string[];
+  /**
+   * Multi-step problems only: the expression before each step, with the part
+   * that step works out marked (MARK_START and MARK_END in expr.ts).
+   */
+  before?: string[];
 }
 
 const step = (a: number, op: Op, b: number, c: number) => `${a}${DISPLAY_OP[op]}${b} = ${c}`;
@@ -191,9 +196,11 @@ function dividing(a: number, b: number): Explanation {
 function oneAtATime(expr: Expr): Explanation {
   const steps: string[] = [];
   const after: string[] = [];
+  const before: string[] = [];
   let e = expr;
   while (e.kind === 'bin') {
-    const [next, done] = reduceFirst(e);
+    const [next, done, node] = reduceFirst(e);
+    before.push(format(e, node));
     steps.push(done);
     after.push(format(next));
     e = next;
@@ -203,26 +210,27 @@ function oneAtATime(expr: Expr): Explanation {
     : opCount(expr) > 2
       ? 'Parentheses first, then × and ÷, then + and −'
       : 'Parentheses first';
-  return { how, steps, after };
+  return { how, steps, after, before };
 }
 
 /**
  * Work out the first operation that's ready (both sides are numbers), searching
  * left side first. The tree already encodes the order of operations, so this
- * does parentheses, then × and ÷, then + and −, left to right.
+ * does parentheses, then × and ÷, then + and −, left to right. Returns the new
+ * tree, the step, and the node that was worked out.
  */
-function reduceFirst(e: Expr & { kind: 'bin' }): [Expr, string] {
+function reduceFirst(e: Expr & { kind: 'bin' }): [Expr, string, Expr] {
   if (e.left.kind === 'bin') {
-    const [left, done] = reduceFirst(e.left);
-    return [{ ...e, left }, done];
+    const [left, done, node] = reduceFirst(e.left);
+    return [{ ...e, left }, done, node];
   }
   if (e.right.kind === 'bin') {
-    const [right, done] = reduceFirst(e.right);
-    return [{ ...e, right }, done];
+    const [right, done, node] = reduceFirst(e.right);
+    return [{ ...e, right }, done, node];
   }
   const value = evaluate(e);
   if (value === null) throw new Error(`Can't work out ${format(e)}`);
-  return [num(value), step(e.left.value, e.op, e.right.value, value)];
+  return [num(value), step(e.left.value, e.op, e.right.value, value), e];
 }
 
 function hasGroup(e: Expr): boolean {

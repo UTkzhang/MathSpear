@@ -59,19 +59,30 @@ export function opsUsed(e: Expr): Op[] {
   return e.kind === 'num' ? [] : [...opsUsed(e.left), e.op, ...opsUsed(e.right)];
 }
 
-/** Display text, e.g. "2+(24÷2)×5". Adds parentheses where precedence needs them or `group` asks for them. */
-export function format(e: Expr): string {
-  if (e.kind === 'num') return String(e.value);
-  const p = PRECEDENCE[e.op];
-  const side = (child: Expr, isRight: boolean): string => {
-    const text = format(child);
-    if (child.kind === 'num') return text;
-    if (child.group) return `(${text})`;
-    const cp = PRECEDENCE[child.op];
-    const needs = cp < p || (isRight && cp === p && (e.op === '-' || e.op === '/'));
-    return needs ? `(${text})` : text;
+/** Put around the `mark`ed part of format()'s text, e.g. "2+\u0001(24÷2)\u0002×5". */
+export const MARK_START = '\u0001';
+export const MARK_END = '\u0002';
+
+/**
+ * Display text, e.g. "2+(24÷2)×5". Adds parentheses where precedence needs them
+ * or `group` asks for them. If `mark` is a node of `e`, its text (with its
+ * parentheses) is wrapped in MARK_START and MARK_END, so it can be highlighted.
+ */
+export function format(e: Expr, mark?: Expr): string {
+  const wrap = (node: Expr, text: string) => (node === mark ? `${MARK_START}${text}${MARK_END}` : text);
+  const plain = (e: Expr): string => {
+    if (e.kind === 'num') return String(e.value);
+    const p = PRECEDENCE[e.op];
+    const side = (child: Expr, isRight: boolean): string => {
+      const text = plain(child);
+      if (child.kind === 'num') return wrap(child, text);
+      const cp = PRECEDENCE[child.op];
+      const needs = child.group || cp < p || (isRight && cp === p && (e.op === '-' || e.op === '/'));
+      return wrap(child, needs ? `(${text})` : text);
+    };
+    return `${side(e.left, false)}${DISPLAY_OP[e.op]}${side(e.right, true)}`;
   };
-  return `${side(e.left, false)}${DISPLAY_OP[e.op]}${side(e.right, true)}`;
+  return wrap(e, plain(e));
 }
 
 const PARSE_OP: Record<string, Op> = { '+': '+', '−': '-', '-': '-', '×': '*', '*': '*', '÷': '/', '/': '/' };

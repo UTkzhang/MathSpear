@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, PRESETS, WIDTH, type PresetKey } from '../config';
-import { fitCamera, makeButton, makeInfoIcon, makeText, onKey } from '../ui/widgets';
+import { fitCamera, hasKeyboard, makeButton, makeInfoIcon, makeText, onKey } from '../ui/widgets';
 import { levelsText, loadBest, loadPreset, type GameData } from './types';
 
 let urlChecked = false;
@@ -57,9 +57,9 @@ export class MenuScene extends Phaser.Scene {
       makeText(this, WIDTH / 2, 440, `Best run (${name}): ${levelsText(best)} cleared`, { fontSize: '22px', color: COLORS.accent });
     }
 
-    makeText(this, WIDTH / 2, 604, 'Move: WASD / arrow keys, or hold the mouse   ·   Esc: back to menu', {
-      fontSize: '14px',
-      color: COLORS.textDim,
-    });
+    const controls = hasKeyboard(this)
+      ? 'Move: WASD / arrow keys, or hold the mouse   ·   Esc: back to menu'
+      : 'Move: hold your finger where you want to go';
+    makeText(this, WIDTH / 2, 604, controls, { fontSize: '14px', color: COLORS.textDim });
   }
 }

@@ -40,9 +40,10 @@ stage. On the multi-step stages they slow back down and the problem text gets a 
 smaller, so the challenge is the math, not dodging. This is `STAGES` in `src/config.ts`.
 
 **A short lesson before each new stage.** The first level of every stage starts with one
-strategy, a worked example shown one step at a time, and one problem to try (typed, and it
-doesn't count). Right or wrong, the player then sees the steps for that problem. Lessons
-seen before in this browser show everything at once, and Enter goes straight to the level.
+strategy ("the trick"), a worked example shown one step at a time, and a quick practice:
+one problem to try (typed, and it doesn't count). Right or wrong, the player then sees the
+steps for that problem. Lessons seen before in this browser show everything at once, Enter
+goes straight to the level, and the quick practice is still there to pick.
 Any lesson can be skipped. The text is `lesson` in `STAGES` (`src/config.ts`).
 
 | Stage | Strategy | Worked example |
@@ -188,7 +189,7 @@ src/
   scenes/              Phaser scenes: Menu, Setup (difficulty), Test and TestResult
                        (test round), Lesson, Game (+ tutorial script), Shop, Result
                        (summary), Data (download and delete)
-  ui/widgets.ts        text and button helpers
+  ui/widgets.ts        shared layout, text, button, panel and tooltip helpers
   ui/answerPad.ts      typed answer and on-screen number pad (test round, lessons)
 tests/                 Vitest tests
 ```
@@ -205,7 +206,7 @@ end summary.
 - adaptivity at every shop (number sizes, review of weak problem types)
 - difficulty settings, recommended by the test round
 - the before/after test round (two matching forms)
-- lessons before each new stage (strategy, worked example, one to try)
+- lessons before each new stage (the trick, a worked example, a quick practice problem)
 - worked steps after a wrong hit
 - per-level and per-shop summaries
 - a per-problem-type report at the end of a run

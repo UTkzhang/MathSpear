@@ -5,12 +5,14 @@ import { buy, canBuy, currentLevel, levelSpec, price, sinceLastShop, type Item, 
 import { sizeChanges } from '../learning/adapt';
 import { explainLine } from '../learning/explain';
 import { SKILL_NAMES, type Skill } from '../learning/problems';
-import { fitCamera, makeButton, makeText, onKey } from '../ui/widgets';
+import { fitCamera, makeButton, makeLabel, makePanel, makeText, makeTitle, onKey, UI } from '../ui/widgets';
 import type { ResultData, ShopData } from './types';
 
 const CARD_W = 270;
-const CARD_H = 250;
-const CARD_TOP = 268;
+const CARD_H = 242;
+const CARD_TOP = 290;
+/** The summary of the levels just played: a panel under the title. */
+const SUMMARY = { x: WIDTH / 2 - 420, y: 122, w: 840, h: 112, lineH: 24 };
 const PREVIEW_SCALE = 1.6;
 const HOTKEYS: Record<Item, [string, string]> = { speed: ['ONE', '1'], shield: ['TWO', '2'], heart: ['THREE', '3'] };
 
@@ -23,6 +25,8 @@ const names = (skills: Skill[]) => skills.map((s) => SKILL_NAMES[s]).join(', ');
  */
 export class ShopScene extends Phaser.Scene {
   private shop!: ShopData;
+  /** True while the scene restarts itself to redraw after a purchase (so it doesn't fade in again). */
+  private redraw = false;
 
   constructor() {
     super('Shop');
@@ -30,18 +34,19 @@ export class ShopScene extends Phaser.Scene {
 
   create(data: ShopData): void {
     this.shop = data;
-    fitCamera(this);
+    fitCamera(this, !this.redraw);
+    this.redraw = false;
     const run = data.run;
     const next = currentLevel(run);
 
-    makeText(this, WIDTH / 2, 40, `Level ${run.cleared} cleared!`, { fontSize: '36px', fontStyle: 'bold', color: COLORS.good });
-    makeText(this, WIDTH / 2, 76, `Next: Level ${next}  ·  ${levelSpec(run).name}  ·  next shop after level ${run.cleared + GAME.levelsPerShop}`, {
-      fontSize: '17px',
-      color: COLORS.textDim,
-    });
-    this.howItWent();
-    this.progress();
-    makeText(this, WIDTH / 2, 238, `${run.gold.toLocaleString()} gold to spend`, { fontSize: '26px', fontStyle: 'bold', color: COLORS.gold });
+    makeTitle(
+      this,
+      `Level ${run.cleared} cleared!`,
+      `Next: Level ${next}  ·  ${levelSpec(run).name}  ·  next shop after level ${run.cleared + GAME.levelsPerShop}`,
+      COLORS.good,
+    );
+    this.summary();
+    makeText(this, WIDTH / 2, 262, `${run.gold.toLocaleString()} gold to spend`, { fontSize: '24px', fontStyle: 'bold', color: COLORS.gold });
 
     this.card('speed', WIDTH / 2 - 300);
     this.card('shield', WIDTH / 2);
@@ -49,67 +54,67 @@ export class ShopScene extends Phaser.Scene {
 
     const play = () => this.scene.start('Game', { mode: 'play', run });
     const end = () => this.scene.start('Result', { mode: 'play', run, outOfHearts: false } satisfies ResultData);
-    makeButton(this, WIDTH / 2 - 150, 584, `Level ${next}`, play, { hotkey: '⏎', primary: true });
-    makeButton(this, WIDTH / 2 + 150, 584, 'End run', end, { hotkey: 'Esc' });
+    makeButton(this, WIDTH / 2 - 150, UI.buttonsY, `Play Level ${next}`, play, { hotkey: '⏎', primary: true });
+    makeButton(this, WIDTH / 2 + 150, UI.buttonsY, 'End run', end, { hotkey: 'Esc' });
     onKey(this, 'ENTER', play);
     onKey(this, 'SPACE', play);
     onKey(this, 'ESC', end);
   }
 
-  /** How the levels since the last shop went, and one missed problem worked out. */
-  private howItWent(): void {
-    const recent = sinceLastShop(this.shop.run);
+  /**
+   * How the levels since the last shop went, one missed problem worked out, and
+   * how the problems are changing (at most four lines, centred in the panel).
+   */
+  private summary(): void {
+    const run = this.shop.run;
+    const recent = sinceLastShop(run);
     const s = summarize(recent);
-    const first = recent.length ? recent[0].level : this.shop.run.cleared;
-    const levels = first === this.shop.run.cleared ? `Level ${first}` : `Levels ${first}–${this.shop.run.cleared}`;
+    const first = recent.length ? recent[0].level : run.cleared;
     const time = s.avgResponseMs === null ? '' : `  ·  ${(s.avgResponseMs / 1000).toFixed(1)} s to find a target`;
-    const tally = s.wrong ? `${s.correct} right, ${s.wrong} wrong` : `all ${s.correct} right`;
-    makeText(this, WIDTH / 2, 114, `${levels}: ${tally}${time}`, { fontSize: '19px' });
+    const tally = s.wrong ? `${s.correct} right, ${s.wrong} wrong` : `All ${s.correct} right`;
+    const lines: [string, string, string][] = [[`${tally}${time}`, COLORS.text, '19px']];
+
     const missed = recent.filter((a) => !a.correct).pop();
     if (missed) {
       const p = missed.problem;
-      makeText(this, WIDTH / 2, 142, `Look again: ${p.text} = ${p.answer}.  ${explainLine(p.expr, 80)}`, {
-        fontSize: '16px',
-        color: COLORS.textDim,
-      });
+      lines.push([`Look again: ${p.text} = ${p.answer}.  ${explainLine(p.expr, 80)}`, COLORS.textDim, '16px']);
     }
-  }
-
-  /** One or two lines on how the problems are changing. */
-  private progress(): void {
     const { bigger, smaller } = sizeChanges(this.shop.report);
     const review = this.shop.report.review;
-    const lines: [string, string][] = [];
-    if (bigger.length) lines.push([`Bigger numbers next: ${names(bigger)}`, COLORS.accent]);
-    if (smaller.length) lines.push([`Smaller numbers for now: ${names(smaller)}`, COLORS.textDim]);
-    if (review.length) lines.push([`Back for practice: ${names(review)}`, COLORS.textDim]);
-    if (!lines.length) lines.push(['Keep it up: the problems grow as you get faster.', COLORS.textDim]);
-    lines.slice(0, 2).forEach(([text, color], i) => makeText(this, WIDTH / 2, 176 + i * 24, text, { fontSize: '16px', color }));
+    const changes: [string, string, string][] = [];
+    if (bigger.length) changes.push([`Bigger numbers next: ${names(bigger)}`, COLORS.accent, '16px']);
+    if (smaller.length) changes.push([`Smaller numbers for now: ${names(smaller)}`, COLORS.textDim, '16px']);
+    if (review.length) changes.push([`Back for practice: ${names(review)}`, COLORS.textDim, '16px']);
+    if (!changes.length) changes.push(['Keep it up: the problems grow as you get faster.', COLORS.textDim, '16px']);
+    lines.push(...changes.slice(0, 2));
+
+    makePanel(this, SUMMARY.x, SUMMARY.y, SUMMARY.w, SUMMARY.h);
+    makeLabel(this, SUMMARY.x + 20, SUMMARY.y + 20, first === run.cleared ? `Level ${first}` : `Levels ${first}–${run.cleared}`);
+    const top = SUMMARY.y + SUMMARY.h / 2 - ((lines.length - 1) * SUMMARY.lineH) / 2;
+    lines.forEach(([text, color, fontSize], i) => makeText(this, WIDTH / 2, top + i * SUMMARY.lineH, text, { fontSize, color }));
   }
 
   private purchase(item: Item): void {
     if (!buy(this.shop.run, item)) return;
+    this.redraw = true;
     this.scene.restart(this.shop);
   }
 
   private card(item: Item, cx: number): void {
     const run = this.shop.run;
     const top = CARD_TOP;
-    const bg = this.add.graphics();
-    bg.fillStyle(0x1b2130, 1);
-    bg.fillRoundedRect(cx - CARD_W / 2, top, CARD_W, CARD_H, 12);
-    bg.lineStyle(2, 0x2c3447, 1);
-    bg.strokeRoundedRect(cx - CARD_W / 2, top, CARD_W, CARD_H, 12);
+    makePanel(this, cx - CARD_W / 2, top, CARD_W, CARD_H);
 
     const { title, stat } = describe(run, item);
     makeText(this, cx, top + 28, title, { fontSize: '22px', fontStyle: 'bold' });
-    this.preview(item, cx, top + 92);
-    makeText(this, cx, top + 152, stat, { fontSize: '16px', color: COLORS.textDim, align: 'center' });
+    this.preview(item, cx, top + 90);
+    makeText(this, cx, top + 150, stat, { fontSize: '16px', color: COLORS.textDim, align: 'center' });
 
+    // The button says why it can't be pressed: nothing left to buy, or not enough gold.
     const cost = price(run, item);
     const [key, hint] = HOTKEYS[item];
-    const label = cost === null ? 'Maxed out' : `Buy  ·  ${cost} gold`;
-    const button = makeButton(this, cx, top + 208, label, () => this.purchase(item), { width: CARD_W - 30, hotkey: hint });
+    const label = cost === null ? 'Maxed out' : run.gold < cost ? `Need ${cost} gold` : `Buy  ·  ${cost} gold`;
+    const button = makeButton(this, cx, top + 202, label, () => this.purchase(item), { width: CARD_W - 30, hotkey: hint });
     button.setEnabled(canBuy(run, item));
     onKey(this, key, () => this.purchase(item));
   }
