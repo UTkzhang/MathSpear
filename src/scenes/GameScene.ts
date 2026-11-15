@@ -370,11 +370,14 @@ export class GameScene extends Phaser.Scene {
     let dx = (k.right.isDown || k.D.isDown ? 1 : 0) - (k.left.isDown || k.A.isDown ? 1 : 0);
     let dy = (k.down.isDown || k.S.isDown ? 1 : 0) - (k.up.isDown || k.W.isDown ? 1 : 0);
 
-    // Mouse / touch: hold to move toward the pointer.
+    // Mouse / touch: hold to move toward the pointer. Its place in the arena comes from this
+    // scene's own camera: pointer.worldX/worldY belong to whichever scene handled the pointer
+    // last, and scenes that haven't been opened yet (unzoomed cameras) overwrite them.
     const p = this.input.activePointer;
     if (dx === 0 && dy === 0 && p.isDown) {
-      const tx = p.worldX - this.player.x;
-      const ty = p.worldY - this.player.y;
+      const at = this.cameras.main.getWorldPoint(p.x, p.y);
+      const tx = at.x - this.player.x;
+      const ty = at.y - this.player.y;
       if (Math.hypot(tx, ty) > 8) {
         dx = tx;
         dy = ty;
