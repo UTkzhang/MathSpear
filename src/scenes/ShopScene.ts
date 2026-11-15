@@ -148,7 +148,7 @@ export class ShopScene extends Phaser.Scene {
       return;
     }
 
-    // The player facing right, drawn at game size and scaled up: shield on the left (top), spear on the right (bottom).
+    // The player facing right, drawn at game size and scaled up: shield front-left (top right), spear on the right (bottom).
     g.setScale(PREVIEW_SCALE);
     const r = PLAYER.radius;
     const shield = (arcDeg: number, alpha: number) => {
@@ -186,7 +186,7 @@ function describe(run: RunState, item: Item): { title: string; stat: string } {
       const nxt = GEAR.shield[run.shield + 1];
       return {
         title: `Shield  ${run.shield + 1}/${GEAR.shield.length}`,
-        stat: nxt ? `Covers more of your left side:\n${cur.arcDeg}° → ${nxt.arcDeg}°` : `Covers ${cur.arcDeg}°\nThe best shield!`,
+        stat: nxt ? `Covers more of your front and left:\n${cur.arcDeg}° → ${nxt.arcDeg}°` : `Covers ${cur.arcDeg}°\nThe best shield!`,
       };
     }
     case 'heart':

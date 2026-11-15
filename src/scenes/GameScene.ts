@@ -13,6 +13,7 @@ import {
   type Bounds,
 } from '../game/physics';
 import { hitGold } from '../game/gold';
+import { shieldAngle, spearPoints } from '../game/hands';
 import { Round, type HitResult } from '../game/round';
 import {
   completeLevel,
@@ -373,25 +374,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** The player's right, a quarter turn clockwise from facing (y points down). */
-  private rightHand(): { x: number; y: number } {
-    return { x: -this.facing.y, y: this.facing.x };
-  }
-
-  /** Where the spear's shaft starts (held in the right hand) and its tip. */
+  /** Where the spear's shaft starts (held in the right hand) and its tip (game/hands.ts). */
   private spear(): { base: { x: number; y: number }; tip: { x: number; y: number } } {
-    const f = this.facing;
-    const side = this.rightHand();
-    const x = this.player.x + side.x * SPEAR.sideOffset;
-    const y = this.player.y + side.y * SPEAR.sideOffset;
-    const reach = this.player.r + SPEAR.length;
-    const back = this.player.r * 0.5;
-    return { base: { x: x - f.x * back, y: y - f.y * back }, tip: { x: x + f.x * reach, y: y + f.y * reach } };
+    return spearPoints(this.player.x, this.player.y, this.player.r, this.facing);
   }
 
-  /** Direction from the player to the middle of the shield (SHIELD.side degrees to the left of facing). */
+  /** Direction from the player to the middle of the shield, front-left (game/hands.ts). */
   private shieldAngle(): number {
-    return Math.atan2(this.facing.y, this.facing.x) - (SHIELD.side * Math.PI) / 180;
+    return shieldAngle(this.facing);
   }
 
   private checkSpear(now: number): void {
@@ -595,7 +585,7 @@ export class GameScene extends Phaser.Scene {
     this.hudLock.setVisible(locked);
     if (locked && this.round) this.hudLock.setText(`Spear locked  ${Math.ceil((this.round.spearLockedUntil - now) / 1000)}s`);
 
-    // Shield in the left hand.
+    // Shield in the left hand, held out in front.
     const mid = this.shieldAngle();
     const half = (shieldOf(this.run).arcDeg * Math.PI) / 360;
     const blocking = now < this.shieldFlashUntil;

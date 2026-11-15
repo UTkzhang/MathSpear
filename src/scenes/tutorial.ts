@@ -100,7 +100,7 @@ export class Tutorial {
       case 'hearts':
         s.hpFloor = 1; // nobody fails the tutorial
         s.startRound(generateRoundProblems(3, createRng(2024), skillsForTier(1)), { speed: [70, 100], chase: 0.5 });
-        s.setPrompt('Enemies that touch you cost a heart (top left), but the shield in\nyour left hand blocks them. Keep them on your shield side, and clear these three!');
+        s.setPrompt('Enemies that touch you cost a heart (top left), but the shield you hold out\nin your left hand blocks them. Keep them on your shield side, and clear these three!');
         break;
 
       case 'done':

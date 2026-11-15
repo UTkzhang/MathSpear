@@ -43,7 +43,7 @@ export const GEAR = {
     { speed: 245, cost: 500 },
     { speed: 260, cost: 750 },
   ],
-  /** `arcDeg`: how much of the player's left side the shield covers. */
+  /** `arcDeg`: how wide the shield is, as an arc around the player (see SHIELD for where it sits). */
   shield: [
     { arcDeg: 60, cost: 0 },
     { arcDeg: 75, cost: 150 },
@@ -54,14 +54,14 @@ export const GEAR = {
 };
 
 /**
- * The spear is held in the right hand and points the way you move. Its size is
- * fixed: a longer spear also runs into more wrong enemies, so the shop sells
- * speed instead.
+ * The spear is held in the right hand, close to the middle, and points the way
+ * you move. Its size is fixed: a longer spear also runs into more wrong
+ * enemies, so the shop sells speed instead.
  */
 export const SPEAR = {
   length: 20, // px past the player's edge
   tipRadius: 4, // the part that hits
-  sideOffset: 8, // px to the right of the player's centre
+  sideOffset: 6, // px to the right of the player's centre
   /**
    * Penalty after a wrong hit: for this long the spear can't hit anything, and the
    * player blinks and can't be hurt (so a wrong hit never costs a heart by itself).
@@ -70,11 +70,17 @@ export const SPEAR = {
 };
 
 /**
- * Shield in the left hand, on the other side from the spear. Enemies that bump
- * into it bounce off without costing a heart. Its width comes from GEAR.shield.
+ * Shield in the left hand, held out in front: front-left of the player, next to
+ * the spear. Enemies that bump into it bounce off without costing a heart. Its
+ * width comes from GEAR.shield.
+ *
+ * `side` puts it where an enemy ends up when the spear tip just misses it: run
+ * at a target a little off line and you meet the shield, not the enemy
+ * (tests/hands.test.ts checks this). Pointing straight left (90) left that gap
+ * open, so a near miss cost a heart.
  */
 export const SHIELD = {
-  side: 90, // degrees from straight ahead to the middle of the shield, toward the left
+  side: 50, // degrees from straight ahead to the middle of the shield, toward the left
   gap: 5, // px between the player's edge and the shield
   thickness: 5, // px
   flashMs: 200, // the shield lights up after a block

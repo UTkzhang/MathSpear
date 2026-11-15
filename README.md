@@ -62,7 +62,9 @@ generated problem (tests check every step's arithmetic for every problem type an
 A wrong hit shows the real answer and starts a 5 s penalty: you blink and can't be hurt,
 but your spear can't hit anything either. During those 5 s the bottom of the arena shows
 the steps for the problem you hit ("7×8 = 56, not 54 · 8 is 5 and 3: 5×7 = 35 → …"). The spear is in your right hand and the shield
-is in your left. Enemies that touch you cost a heart, unless they hit the shield.
+is in your left, held out in front. Enemies that touch you cost a heart, unless they hit
+the shield. The shield sits where an enemy ends up when the spear tip just misses it, so
+running at the right target a little off line bounces you off instead of costing a heart.
 
 **Gold and the shop.** Correct hits earn gold: 10 per operation in the problem (7+5 → 10,
 2+(24÷2)×5 → 30), plus up to 10 for finding the target fast. Wrong hits cost nothing but time.
@@ -72,7 +74,7 @@ the challenge:
 | Item | Start | Upgrades |
 | --- | --- | --- |
 | Speed | 200 | 4 upgrades, up to 260 (150, 300, 500, 750 gold) |
-| Shield | covers 60° of your left side | 4 upgrades, up to 120° (150, 300, 500, 750 gold) |
+| Shield | covers 60° of your front and left | 4 upgrades, up to 120° (150, 300, 500, 750 gold) |
 | Hearts | 1 | 150 gold each, up to 3 (also how you buy back a lost heart) |
 
 The spear's size is fixed: a longer spear also runs into more wrong enemies.
@@ -186,6 +188,7 @@ src/
     run.ts             a run: levels and stages, lessons, shop cadence, gold, purchases, the saved run record
     gold.ts            gold per hit, end-of-run numbers
     physics.ts         circle movement and collisions
+    hands.ts           where the spear and the shield are held
   scenes/              Phaser scenes: Menu, Setup (difficulty), Test and TestResult
                        (test round), Lesson, Game (+ tutorial script), Shop, Result
                        (summary), Data (download and delete)
