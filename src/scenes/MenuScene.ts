@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, PRESETS, WIDTH, type PresetKey } from '../config';
+import { currentLevel, presetOf } from '../game/run';
 import { fitCamera, hasKeyboard, makeButton, makeInfoIcon, makeText, onKey } from '../ui/widgets';
-import { levelsText, loadBest, loadPreset, type GameData } from './types';
+import { levelsText, loadBest, loadPreset, loadSavedRun, type GameData, type ShopData } from './types';
 
 let urlChecked = false;
 
@@ -41,14 +42,31 @@ export class MenuScene extends Phaser.Scene {
     makeText(this, WIDTH / 2, 110, 'Math Spear', { fontSize: '64px', fontStyle: 'bold', color: COLORS.accent });
     makeText(this, WIDTH / 2, 168, 'Hit the enemy whose problem matches the target.', { fontSize: '21px', color: COLORS.textDim });
 
-    makeButton(this, WIDTH / 2, 262, 'Tutorial', tutorial, { hotkey: 'T', width: 340 });
-    makeButton(this, WIDTH / 2, 330, 'Play', play, { hotkey: '⏎', primary: true, width: 340 });
+    // A run in progress comes first: Enter resumes it, and Play becomes "New run".
+    const saved = loadSavedRun();
+    if (saved) {
+      const resume = () =>
+        saved.shop
+          ? this.scene.start('Shop', { run: saved.run, report: saved.shop } satisfies ShopData)
+          : this.scene.start('Game', { mode: 'play', run: saved.run } satisfies GameData);
+      const label = `Resume  ·  Level ${currentLevel(saved.run)} (${presetOf(saved.run.preset).name})`;
+      makeButton(this, WIDTH / 2, 228, label, resume, { hotkey: '⏎', primary: true, width: 340 });
+      makeButton(this, WIDTH / 2, 292, 'New run', play, { hotkey: 'N', width: 340 });
+      makeButton(this, WIDTH / 2, 356, 'Tutorial', tutorial, { hotkey: 'T', width: 340 });
+      makeText(this, WIDTH / 2, 398, 'A new run replaces the saved one.', { fontSize: '14px', color: COLORS.textDim });
+      onKey(this, 'ENTER', resume);
+      onKey(this, 'SPACE', resume);
+      onKey(this, 'N', play);
+    } else {
+      makeButton(this, WIDTH / 2, 262, 'Tutorial', tutorial, { hotkey: 'T', width: 340 });
+      makeButton(this, WIDTH / 2, 330, 'Play', play, { hotkey: '⏎', primary: true, width: 340 });
+      onKey(this, 'ENTER', play);
+      onKey(this, 'SPACE', play);
+    }
     makeButton(this, WIDTH / 2, 530, 'Your data', data, { hotkey: 'D', width: 340 });
     makeInfoIcon(this, WIDTH / 2 + 170 + 26, 530, 'All your data is stored locally in this browser and stays private to your device. We do not store it online.');
     onKey(this, 'T', tutorial);
     onKey(this, 'D', data);
-    onKey(this, 'ENTER', play);
-    onKey(this, 'SPACE', play);
 
     const preset: PresetKey | null = loadPreset();
     const best = preset ? loadBest(preset) : 0;

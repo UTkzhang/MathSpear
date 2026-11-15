@@ -6,7 +6,7 @@ import { sizeChanges } from '../learning/adapt';
 import { explainLine } from '../learning/explain';
 import { SKILL_NAMES, type Skill } from '../learning/problems';
 import { fitCamera, makeButton, makeLabel, makePanel, makeText, makeTitle, onKey, UI } from '../ui/widgets';
-import type { ResultData, ShopData } from './types';
+import { saveProgress, type ResultData, type ShopData } from './types';
 
 const CARD_W = 270;
 const CARD_H = 242;
@@ -38,6 +38,7 @@ export class ShopScene extends Phaser.Scene {
     this.redraw = false;
     const run = data.run;
     const next = currentLevel(run);
+    saveProgress(run, data.report); // resuming comes back here, with what has been bought so far
 
     makeTitle(
       this,

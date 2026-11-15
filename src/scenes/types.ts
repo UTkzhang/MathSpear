@@ -1,5 +1,6 @@
 import { PRESETS, type PresetKey } from '../config';
-import { runRecord, type RunEnd, type RunRecord, type RunState } from '../game/run';
+import { resumeRun, runRecord, suspendRun, withRunRecord, type RunEnd, type RunRecord, type RunState } from '../game/run';
+import { randomSeed } from '../learning/rng';
 import type { CheckpointReport } from '../learning/adapt';
 import type { BandResult, TestRecord } from '../learning/testRound';
 
@@ -72,6 +73,8 @@ export const STORAGE_KEYS = {
   runs: 'mathspear.runs',
   /** Names of the stages whose lesson the player has seen (string[] as JSON). */
   lessonsSeen: 'mathspear.lessonsSeen',
+  /** The run in progress, for "Resume" on the menu (SavedRun as JSON). */
+  savedRun: 'mathspear.savedRun',
 };
 const PREFIX = 'mathspear.';
 
@@ -86,6 +89,14 @@ function read(key: string): string | null {
 function write(key: string, value: string): void {
   try {
     window.localStorage.setItem(key, value);
+  } catch {
+    // ignore: the game works without storage
+  }
+}
+
+function remove(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
   } catch {
     // ignore: the game works without storage
   }
@@ -124,11 +135,32 @@ export function loadTestDeclinedAt(): number | null {
 export const declineTest = (): void => write(STORAGE_KEYS.testDeclinedAt, String(loadPlayMinutes()));
 
 export const loadRuns = (): RunRecord[] => readList<RunRecord>(STORAGE_KEYS.runs);
-/** Add a finished (or quit) run to the event log. Runs with no hits at all are left out. */
+/**
+ * Add a finished (or quit) run to the event log. Runs with no hits at all are
+ * left out, and a run that was quit and then resumed replaces its earlier record.
+ */
 export function saveRun(run: RunState, ended: RunEnd): void {
   if (!run.attempts.length && !run.lessonTries.length) return;
-  write(STORAGE_KEYS.runs, JSON.stringify([...loadRuns(), runRecord(run, ended, new Date().toISOString())]));
+  write(STORAGE_KEYS.runs, JSON.stringify(withRunRecord(loadRuns(), runRecord(run, ended, new Date().toISOString()))));
 }
+
+/** Save the run in progress so the menu can offer "Resume" (`shop`: the player is in the shop). */
+export function saveProgress(run: RunState, shop?: CheckpointReport): void {
+  write(STORAGE_KEYS.savedRun, JSON.stringify(suspendRun(run, randomSeed(), shop)));
+}
+
+/** The run in progress, if there is one to resume. */
+export function loadSavedRun(): { run: RunState; shop?: CheckpointReport } | null {
+  try {
+    const raw = read(STORAGE_KEYS.savedRun);
+    return raw === null ? null : resumeRun(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** The run is over (or was replaced): nothing to resume. */
+export const clearSavedRun = (): void => remove(STORAGE_KEYS.savedRun);
 
 export const loadLessonsSeen = (): string[] => readList<string>(STORAGE_KEYS.lessonsSeen);
 export function markLessonSeen(stageName: string): void {

@@ -124,8 +124,15 @@ play, and see how much you improved.
 
 The problems and the 10 minutes are `TEST` in `src/config.ts`.
 
-**The event log and "Your data".** Every run is saved in the browser when it ends (out of
-hearts, ended at the shop, or quit with Esc), in `mathspear.runs`. It records every hit
+**Resuming a run.** A run never ends on its own, so it can be picked up later. It is saved
+in the browser when each level starts and in the shop, and the menu then offers **Resume**
+(also after Esc or a closed tab). An unfinished level starts over: the gold from it isn't
+kept, but a heart lost in it stays lost. Starting a new run replaces the saved one, and a
+run that ends (out of hearts, or ended at the shop) can't be resumed.
+
+**The event log and "Your data".** Every run is saved in the browser, in `mathspear.runs`:
+after each cleared level, and when it ends (out of hearts, ended at the shop, or quit with
+Esc). A run that is left and resumed is one record, not two. It records every hit
 (level, problem, answer, target, right or wrong, time) and every lesson answer. The
 **Your data** screen on the menu shows what is saved. **Download my data** saves it all (test
 rounds and runs) as one JSON file, which is how a tester can share results; nothing is ever sent
@@ -162,7 +169,8 @@ Other scripts:
 WASD or arrow keys to move (the spear points the way you move). You can also hold the
 mouse button or a finger where you want to go. The test round and the lesson problems
 take typed answers, or the on-screen number pad (S skips a problem). In a
-lesson, Enter goes on and S skips to the level. Esc returns to the menu.
+lesson, Enter goes on and S skips to the level. Esc returns to the menu, where a run
+in progress can be resumed.
 
 ## Deploy
 
@@ -214,6 +222,7 @@ end summary.
 - per-level and per-shop summaries
 - a per-problem-type report at the end of a run
 - the event log, with download and delete
+- resuming a run in progress from the menu
 
 **Next:**
 - a public deploy (push to GitHub)

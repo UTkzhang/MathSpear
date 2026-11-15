@@ -9,6 +9,7 @@ import { SKILL_NAMES } from '../learning/problems';
 import { fitCamera, makeButton, makeLabel, makePanel, makeText, makeTitle, onKey, UI } from '../ui/widgets';
 import { afterTestDue, TEST_LENGTH } from '../learning/testRound';
 import {
+  clearSavedRun,
   declineTest,
   levelsText,
   loadBest,
@@ -58,6 +59,7 @@ export class ResultScene extends Phaser.Scene {
 
     const { run, outOfHearts } = data;
     saveRun(run, outOfHearts ? 'out of hearts' : 'ended at the shop');
+    clearSavedRun();
     const s = summarize(run.attempts);
     const best = loadBest(run.preset);
     const newBest = run.cleared > best;
@@ -178,13 +180,19 @@ export class ResultScene extends Phaser.Scene {
     }
   }
 
-  /** The test round is due: offer it first, with playing on as "not now". */
+  /**
+   * The test round is due: offer it first, with playing on as "not now". It is
+   * the "after" once a first test has been taken; a player who skipped the first
+   * one is offered their "before" here instead.
+   */
   private testButtons(): void {
-    makeText(this, WIDTH / 2, 536, `Time for your "after" test round: ${TEST_LENGTH} typed problems, to see your before and after.`, {
-      fontSize: '17px',
-      color: COLORS.good,
-    });
-    const test = () => this.scene.start('Test', { kind: 'after' } satisfies TestData);
+    const kind: TestData['kind'] = loadTests().length ? 'after' : 'before';
+    const pitch =
+      kind === 'after'
+        ? `Time for your "after" test round: ${TEST_LENGTH} typed problems, to see your before and after.`
+        : `Get a before and after: take the test round now (${TEST_LENGTH} typed problems), and again after some play.`;
+    makeText(this, WIDTH / 2, 536, pitch, { fontSize: '17px', color: COLORS.good });
+    const test = () => this.scene.start('Test', { kind } satisfies TestData);
     const later = (scene: string) => () => {
       declineTest();
       this.scene.start(scene);

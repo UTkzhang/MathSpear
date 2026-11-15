@@ -33,6 +33,8 @@ export interface LessonTry {
 }
 
 export interface RunState {
+  /** Tells this run apart in the event log (set when a real game starts; tests leave it out). */
+  id?: string;
   rng: Rng;
   preset: PresetKey;
   /** Levels cleared so far; the level being played (or next) is cleared + 1. */
@@ -226,6 +228,7 @@ export const shieldOf = (run: RunState) => GEAR.shield[run.shield];
 
 // ---------------------------------------------------------------- the event log
 
+/** How a run ended. 'quit' also covers a run left unfinished (it can be resumed from the menu). */
 export type RunEnd = 'out of hearts' | 'ended at the shop' | 'quit';
 
 /** One hit as saved: the problem's text, not its tree. */
@@ -243,6 +246,8 @@ export interface SavedHit {
 
 /** One run, as saved in the browser (the event log) and in the data download. */
 export interface RunRecord {
+  /** The run's id. A run that was quit and later resumed keeps it, so it is saved once, not twice. */
+  id?: string;
   /** When it ended (ISO 8601). */
   at: string;
   preset: PresetKey;
@@ -258,6 +263,7 @@ export interface RunRecord {
 
 export function runRecord(run: RunState, ended: RunEnd, at: string): RunRecord {
   return {
+    ...(run.id ? { id: run.id } : {}),
     at,
     preset: run.preset,
     ended,
@@ -276,4 +282,54 @@ export function runRecord(run: RunState, ended: RunEnd, at: string): RunRecord {
     })),
     lessonTries: run.lessonTries.map((t) => ({ ...t })),
   };
+}
+
+/** The event log with `record` added. It replaces an earlier record of the same run (quit, then resumed). */
+export function withRunRecord(records: readonly RunRecord[], record: RunRecord): RunRecord[] {
+  return [...records.filter((r) => record.id === undefined || r.id !== record.id), record];
+}
+
+// ---------------------------------------------------------------- resuming a run later
+
+/**
+ * A run in progress, as saved in the browser so the menu can offer "Resume".
+ * It is saved when a level starts, in the shop, and when the player leaves a
+ * level. An unfinished level starts over on resume: the gold from it is not
+ * kept, but hearts lost in it are.
+ */
+export interface SavedRun {
+  version: 1;
+  /** Everything in RunState except the random number generator. */
+  run: Omit<RunState, 'rng'>;
+  /** Seeds a new random number generator on resume. */
+  seed: number;
+  /** The shop's report, if the player was in the shop. */
+  shop?: CheckpointReport;
+}
+
+export function suspendRun(run: RunState, seed: number, shop?: CheckpointReport): SavedRun {
+  const { rng: _rng, ...rest } = run;
+  return { version: 1, run: rest, seed, ...(shop ? { shop } : {}) };
+}
+
+/** The run and (if it was in the shop) the shop's report from saved data, or null if the data isn't a usable run. */
+export function resumeRun(saved: unknown): { run: RunState; shop?: CheckpointReport } | null {
+  const s = saved as Partial<SavedRun> | null;
+  const r = s?.run;
+  if (!s || s.version !== 1 || !r || typeof s.seed !== 'number') return null;
+  const whole = (n: unknown, min: number, max: number) => typeof n === 'number' && Number.isInteger(n) && n >= min && n <= max;
+  const usable =
+    PRESETS.some((p) => p.key === r.preset) &&
+    whole(r.cleared, 0, Infinity) &&
+    whole(r.hp, 1, HEARTS.max) &&
+    whole(r.gold, 0, Infinity) &&
+    whole(r.goldEarned, 0, Infinity) &&
+    whole(r.speed, 0, GEAR.speed.length - 1) &&
+    whole(r.shield, 0, GEAR.shield.length - 1) &&
+    typeof r.playMs === 'number' &&
+    typeof r.difficulty === 'object' &&
+    r.difficulty !== null &&
+    [r.review, r.attempts, r.pending, r.lessonsShown, r.lessonTries].every(Array.isArray);
+  if (!usable) return null;
+  return { run: { ...r, rng: createRng(s.seed) }, ...(s.shop ? { shop: s.shop } : {}) };
 }

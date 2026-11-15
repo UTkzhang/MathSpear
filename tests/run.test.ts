@@ -15,11 +15,14 @@ import {
   lessonDue,
   markLessonShown,
   recordAttempts,
+  resumeRun,
   runRecord,
   shopDue,
   sinceLastShop,
   speedOf,
   stageIndex,
+  suspendRun,
+  withRunRecord,
   type RunState,
 } from '../src/game/run';
 
@@ -257,5 +260,74 @@ describe('the event log', () => {
     expect(record.lessonTries).toEqual(run.lessonTries);
     expect(record.sizes).toEqual(run.difficulty);
     expect(JSON.parse(JSON.stringify(record))).toEqual(record);
+  });
+});
+
+describe('resuming a run', () => {
+  /** What the browser does: save as JSON text, read it back later. */
+  const throughStorage = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+  it('comes back with the same level, hearts, gold, gear, number sizes and hits', () => {
+    const run = newRun(5, 'standard');
+    run.id = 'run-a';
+    for (let i = 0; i < 4; i++) clearLevel(run);
+    earn(run, 400);
+    buy(run, 'shield');
+    buy(run, 'heart');
+    run.lessonTries.push({ stage: 3, text: '7×8', skill: 'mul-facts', answer: 56, given: 56, correct: true, ms: 3000 });
+
+    const back = resumeRun(throughStorage(suspendRun(run, 99)));
+    expect(back).not.toBeNull();
+    const { rng: _a, ...before } = run;
+    const { rng: _b, ...after } = back!.run;
+    expect(after).toEqual(before);
+    expect(currentLevel(back!.run)).toBe(5);
+    expect(back!.shop).toBeUndefined();
+  });
+
+  it('can go on playing: the next level has a wave, and the shop still comes on time', () => {
+    const run = newRun(5);
+    clearLevel(run);
+    const back = resumeRun(throughStorage(suspendRun(run, 99)))!.run;
+    expect(levelProblems(back)).toHaveLength(levelSpec(back).enemies);
+    expect(clearLevel(back)).toBeNull();
+    expect(clearLevel(back)).not.toBeNull(); // level 3: the shop
+    expect(back.cleared).toBe(GAME.levelsPerShop);
+  });
+
+  it("remembers the shop's report when the run was left in the shop", () => {
+    const run = newRun(5);
+    let report = null;
+    for (let i = 0; i < GAME.levelsPerShop; i++) report = clearLevel(run);
+    const back = resumeRun(throughStorage(suspendRun(run, 99, report!)));
+    expect(back!.shop).toEqual(report);
+  });
+
+  it('turns down saved data that is not a usable run', () => {
+    const good = suspendRun(newRun(5), 99);
+    expect(resumeRun(throughStorage(good))).not.toBeNull();
+    expect(resumeRun(null)).toBeNull();
+    expect(resumeRun('nonsense')).toBeNull();
+    expect(resumeRun({ ...good, version: 2 })).toBeNull();
+    expect(resumeRun({ ...good, run: { ...good.run, hp: 0 } })).toBeNull(); // a run with no hearts is over
+    expect(resumeRun({ ...good, run: { ...good.run, preset: 'impossible' } })).toBeNull();
+    expect(resumeRun({ ...good, run: { ...good.run, attempts: undefined } })).toBeNull();
+  });
+
+  it('is saved in the event log once, even if it was quit and resumed', () => {
+    const run = newRun(5);
+    run.id = 'run-a';
+    clearLevel(run);
+    const quit = runRecord(run, 'quit', '2026-11-14T12:00:00.000Z');
+    const other = { ...runRecord(newRun(6), 'quit', '2026-11-14T11:00:00.000Z'), id: 'run-b' };
+    clearLevel(run);
+    const ended = runRecord(run, 'out of hearts', '2026-11-14T12:30:00.000Z');
+
+    const log = withRunRecord(withRunRecord([other], quit), ended);
+    expect(log.map((r) => r.id)).toEqual(['run-b', 'run-a']);
+    expect(log[1]).toMatchObject({ ended: 'out of hearts', cleared: 2 });
+    // Records from before runs had ids are never replaced.
+    const old = runRecord(newRun(7), 'quit', '2026-11-01T10:00:00.000Z');
+    expect(withRunRecord([old], runRecord(newRun(8), 'quit', '2026-11-02T10:00:00.000Z'))).toHaveLength(2);
   });
 });

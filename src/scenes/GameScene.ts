@@ -36,7 +36,9 @@ import { fitCamera, hasKeyboard, makeText, onKey, onPress } from '../ui/widgets'
 import { Tutorial } from './tutorial';
 import {
   addPlayMs,
+  clearSavedRun,
   levelsText,
+  saveProgress,
   saveRun,
   type GameData,
   type LessonData,
@@ -92,6 +94,8 @@ export class GameScene extends Phaser.Scene {
   private run!: RunState;
   private rng!: Rng;
   private levelStartedAt = 0;
+  /** Gold when this level started: an unfinished level's gold isn't kept when the run is resumed. */
+  private levelStart = { gold: 0, goldEarned: 0 };
   private player!: Body;
   private facing = { x: 1, y: 0 };
   private invulnerableUntil = 0;
@@ -130,7 +134,9 @@ export class GameScene extends Phaser.Scene {
       this.run.hp = HEARTS.max;
     } else {
       this.run = data.run ?? newRun(data.seed ?? randomSeed(), data.preset);
+      this.run.id ??= `${Date.now().toString(36)}-${randomSeed().toString(36)}`;
     }
+    this.levelStart = { gold: this.run.gold, goldEarned: this.run.goldEarned };
     this.rng = this.run.rng;
     this.hpFloor = 0;
     this.invulnerableUntil = 0;
@@ -145,6 +151,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Every level starts by saving the run, so the menu can offer to resume it (also after a closed tab).
+    if (this.mode === 'play') saveProgress(this.run);
     // A new stage starts with its lesson (LessonScene), which then comes back here.
     if (this.mode === 'play' && lessonDue(this.run)) {
       this.scene.start('Lesson', { run: this.run } satisfies LessonData);
@@ -265,6 +273,11 @@ export class GameScene extends Phaser.Scene {
     this.recordLevel();
     const report = completeLevel(this.run);
     const cleared = `Level ${this.run.cleared} cleared!`;
+    // Leaving during the banner resumes after this level: in the shop if it's due, or at the next level.
+    saveProgress(this.run, report ?? undefined);
+    // Keep the event log up to date too, so a closed tab doesn't lose the run's hits. An
+    // unfinished run counts as quit; its record is replaced when the run goes on or ends.
+    saveRun(this.run, 'quit');
     if (report) {
       this.showBanner(cleared, `${tally}  ·  Shop time: ${this.run.gold.toLocaleString()} gold to spend`);
       const data: ShopData = { run: this.run, report };
@@ -277,13 +290,30 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(GAME.clearedBannerMs, () => this.scene.restart(data));
   }
 
-  /** Back to the menu. A run in progress is saved to the event log as quit. */
+  /**
+   * Back to the menu. A run in progress goes into the event log as quit, and stays
+   * saved so the menu can resume it at the start of this level.
+   */
   private exit(): void {
     if (this.mode === 'play') {
-      if (!this.ended) this.recordLevel();
-      saveRun(this.run, 'quit');
+      if (!this.ended) {
+        this.recordLevel();
+        this.saveLevelStart();
+      }
+      saveRun(this.run, this.run.hp > 0 ? 'quit' : 'out of hearts');
     }
     this.scene.start('Menu');
+  }
+
+  /**
+   * Save the run as it was when this level started, with the hearts it has now.
+   * The level starts over on resume, so its gold isn't kept (no earning it twice),
+   * but a lost heart stays lost.
+   */
+  private saveLevelStart(): void {
+    this.run.gold = this.levelStart.gold;
+    this.run.goldEarned = this.levelStart.goldEarned;
+    saveProgress(this.run);
   }
 
   /** "All 5 right!" or "4 right, 2 wrong", for the level just played. */
@@ -305,6 +335,7 @@ export class GameScene extends Phaser.Scene {
   private gameOver(): void {
     this.ended = true;
     this.recordLevel();
+    clearSavedRun();
     this.showBanner('Out of hearts!', 'Game over');
     const data: ResultData = { mode: 'play', run: this.run, outOfHearts: true };
     this.time.delayedCall(1100, () => this.scene.start('Result', data));
@@ -468,6 +499,8 @@ export class GameScene extends Phaser.Scene {
         else this.gameOver();
         return;
       }
+      // A closed tab mustn't give the heart back: save the level's start again, with one heart fewer.
+      if (this.mode === 'play') saveProgress({ ...this.run, gold: this.levelStart.gold, goldEarned: this.levelStart.goldEarned });
     }
   }
 
